@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "780867026107",
+    "project_id": "drift-11",
+    "storage_bucket": "drift-11.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780867026107:android:007a355e3d6d7dc19abd9e",
+        "android_client_info": {
+          "package_name": "com.example.drift"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780867026107-jsdh7v5knj4pgkijm7cpfj35b51fcuum.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.drift",
+            "certificate_hash": "19fbaf189c034408c1ae2a0f4fdc89e21b183b06"
+          }
+        },
+        {
+          "client_id": "780867026107-7lmj62f198qpljrur40po0olgnh80atr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3uTb3WljJoBhgyFcRYWGGbyj9qkqciic"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780867026107-7lmj62f198qpljrur40po0olgnh80atr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780867026107-m8rf5uldjdl14lqr3lc9hdgspjjcho7b.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.drift"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

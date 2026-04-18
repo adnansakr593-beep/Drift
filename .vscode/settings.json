@@ -1,0 +1,11 @@
+{
+  "python-envs.pythonProjects": [
+    {
+      "path": "lib/cubits/forgot_password",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ],
+  "editor.rulers": [],
+  "dart.flutterSdkPath": ".fvm/versions/3.27.4"
+}
