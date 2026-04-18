@@ -44,7 +44,7 @@ class Drift extends StatelessWidget {
           return MaterialApp(
             theme: lightTheme,
             darkTheme: darkTheme,
-            themeMode: state.themeMode,
+            themeMode: state.themeMode, //ThemeMode.system,
             debugShowCheckedModeBanner: false,
             routes: {
               SigninPage.id: (context) => const SigninPage(),

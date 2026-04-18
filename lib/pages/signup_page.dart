@@ -93,9 +93,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 15),
-
                     Center(
                       child: GlassCont(
                         top: BorderSide(
@@ -290,11 +288,11 @@ class _SignupPageState extends State<SignupPage> {
                                   borderColor: colors.onSurface.withOpacity(
                                     0.7,
                                   ),
-                                  backgroundColor: colors.surface,
+                                  backgroundColor:
+                                      colors.background.withOpacity(0.3),
                                   text: isLoading
                                       ? 'Creating Account...'
                                       : 'Sign up',
-
                                   fontSize: 20,
                                   textColor: colors.onBackground,
                                   icon: isLoading
@@ -316,10 +314,10 @@ class _SignupPageState extends State<SignupPage> {
                                           if (formKey.currentState!
                                               .validate()) {
                                             context.read<SignupCubit>().signUp(
-                                              email: email!,
-                                              password: password!,
-                                              displayName: name,
-                                            );
+                                                  email: email!,
+                                                  password: password!,
+                                                  displayName: name,
+                                                );
                                           }
                                         },
                                 );

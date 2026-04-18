@@ -20,7 +20,6 @@ class CustomSwitch extends StatelessWidget {
     return Container(
       height: 75,
       width: 220,
-      //padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       margin: const EdgeInsets.only(bottom: 15, left: 25),
       decoration: BoxDecoration(
         color: colors.onSurface.withOpacity(0.3),
@@ -41,7 +40,6 @@ class CustomSwitch extends StatelessWidget {
               ),
             ),
           ),
-
           if (icon != null) ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5),
@@ -52,7 +50,6 @@ class CustomSwitch extends StatelessWidget {
               child: icon!,
             ),
           ],
-
           if (child != null) ...[child!],
         ],
       ),
