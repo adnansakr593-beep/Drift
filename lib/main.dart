@@ -41,20 +41,10 @@ class Drift extends StatelessWidget {
       ],
       child: BlocBuilder<ThemeCubit, ThemeState>(
         builder: (context, state) {
-          // ✅ Show nothing (or a bare scaffold) until the real theme is known
-          if (!state.isLoaded) {
-            return const MaterialApp(
-              home: Scaffold(
-                body: SizedBox.shrink(), // invisible, no flash
-              ),
-              debugShowCheckedModeBanner: false,
-            );
-          }
-
           return MaterialApp(
             theme: lightTheme,
             darkTheme: darkTheme,
-            themeMode: state.themeMode!, // safe — we checked isLoaded
+            themeMode: state.themeMode,
             debugShowCheckedModeBanner: false,
             routes: {
               SigninPage.id: (context) => const SigninPage(),
