@@ -2624,3 +2624,17 @@
 //     );
 //   }
 // }
+//=======================================================================================
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  HOW TO USE — from anywhere in the app:
+//
+//  showModalBottomSheet(
+//    context: context,
+//    isScrollControlled: true,
+//    shape: RoundedRectangleBorder(
+//      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+//    ),
+//    builder: (_) => AddLocationSheet(service: _savedService),
+//  );
+// ══════════════════════════════════════════════════════════════════════════════

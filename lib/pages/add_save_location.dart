@@ -12,19 +12,6 @@ import 'package:latlong2/latlong.dart';
 import '../models/saved_location_model.dart';
 import '../services/saved_locations_service_firebase.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  HOW TO USE — from anywhere in the app:
-//
-//  showModalBottomSheet(
-//    context: context,
-//    isScrollControlled: true,
-//    shape: RoundedRectangleBorder(
-//      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-//    ),
-//    builder: (_) => AddLocationSheet(service: _savedService),
-//  );
-// ══════════════════════════════════════════════════════════════════════════════
-
 class AddLocationSheet extends StatefulWidget {
   const AddLocationSheet({super.key, required this.service});
 

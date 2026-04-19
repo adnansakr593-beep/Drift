@@ -2,8 +2,6 @@ import 'package:drift_app/helper/const.dart';
 import 'package:drift_app/widgets/custom_siginup_data.dart';
 import 'package:flutter/material.dart';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
-
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
