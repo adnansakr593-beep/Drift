@@ -237,7 +237,7 @@ class _MapPageState extends State<MapPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadingRoute = false);
-      _showError('فشل في جلب المسار');
+      _showError('Route failed: ${e.toString()}');
     }
   }
 
@@ -428,7 +428,6 @@ class _MapPageState extends State<MapPage> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: locations.length,
-                        // ignore: unnecessary_underscores
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (_, i) => MiniCard(
                           label: locations[i].name,
