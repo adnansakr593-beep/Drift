@@ -43,6 +43,7 @@ class RoutingService {
   // Primary: OSRM demo server
   static const _primary = 'http://router.project-osrm.org/route/v1/driving';
   // Fallback: OpenRouteService (free, no key needed for basic use)
+  // ignore: unused_field
   static const _fallback = 'https://api.openrouteservice.org/v2/directions/driving-car';
 
   static Future<RouteInfo> getRoute({

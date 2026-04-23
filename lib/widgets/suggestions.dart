@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class Suggestions extends StatelessWidget {
   final List<PlaceSuggestion> suggestions;
-  final void Function()? onTap;
+  final void Function(PlaceSuggestion)? onTap;
   const Suggestions({super.key, required this.suggestions,this.onTap});
 
   @override
@@ -30,7 +30,7 @@ class Suggestions extends StatelessWidget {
             final i = entry.key;
             final s = entry.value;
             return InkWell(
-              onTap: onTap,
+              onTap: () => onTap?.call(s),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

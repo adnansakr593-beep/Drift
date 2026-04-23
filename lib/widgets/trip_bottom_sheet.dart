@@ -117,13 +117,11 @@ class TripBottomSheetState extends State<TripBottomSheet>
   }
 
   // ══ SEARCH ════════════════════════════════════════════════════════════════
-  void onSearchChanged(String value) {
+  onSearchChanged(String value) {
     _debounce?.cancel();
-    if (value.trim().length < 2) {
-      setState(() {
-        suggestions = [];
-        _showSuggestions = false;
-      });
+
+    if (value.trim().isEmpty) {
+      clearRoute();
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 450), () {
@@ -226,7 +224,7 @@ class TripBottomSheetState extends State<TripBottomSheet>
   // ══ PRICE EDIT ═══════════════════════════════════════════════════════════
   void adjustPrice(double delta) {
     setState(() {
-      price = (price + delta).clamp(30, 9999);
+      price = (price + delta).clamp(20, 9999);
     });
   }
 
@@ -295,7 +293,24 @@ class TripBottomSheetState extends State<TripBottomSheet>
             padding: EdgeInsets.zero,
             children: [
               const BuildHandle(),
-              ModeTabs(modeInfo: modeInfo, selectedMode: selectedMode),
+              ModeTabs(
+                modeInfo: modeInfo,
+                selectedMode: selectedMode,
+                onTap: (mode) {
+                  setState(() {
+                    selectedMode = mode;
+                  });
+
+                  if (_hasRoute &&
+                      routeDistanceKm != null &&
+                      routeDurationMin != null) {
+                    updateRouteInfo(
+                      distanceKm: routeDistanceKm!,
+                      durationMin: routeDurationMin!,
+                    );
+                  }
+                },
+              ),
               const SizedBox(height: 12),
               CustomSearchBar(
                 citySearchController: citySearchController,
@@ -308,7 +323,7 @@ class TripBottomSheetState extends State<TripBottomSheet>
               if (_showSuggestions)
                 Suggestions(
                   suggestions: suggestions,
-                  onTap: () => selectPlace,
+                  onTap: selectPlace,
                 ),
               if (_hasRoute && !_showSuggestions) ...[
                 SlideTransition(
@@ -337,7 +352,7 @@ class TripBottomSheetState extends State<TripBottomSheet>
                           selectedMode: selectedMode,
                           pulseController: pulseController,
                           price: price,
-                          onTapSearchinDriver: () => cancelSearch,
+                          onTapSearchinDriver: cancelSearch,
                           onTapDriverFound: clearRoute,
                           onTapStrartTrip: startTrip,
                           mode: modeInfo[selectedMode]!,
