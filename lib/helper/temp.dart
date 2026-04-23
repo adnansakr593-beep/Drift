@@ -1,1779 +1,3 @@
-//========================= map Page ==============================
-// // ignore_for_file: deprecated_member_use
-// import 'dart:async';
-// import 'dart:convert';
-// //import 'package:drift_app/widgets/custom_top_bar.dart';
-// import 'package:drift_app/widgets/fab_btn.dart';
-// import 'package:drift_app/widgets/loading_pill.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_map/flutter_map.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:latlong2/latlong.dart';
-// import '../models/route_info.dart';
-// import '../services/location_service.dart';
-// import '../services/routing_service.dart';
-// import '../widgets/map_markers.dart';
-// import '../widgets/route_info_sheet.dart';
-
-// class MapPage extends StatefulWidget {
-//   const MapPage({super.key});
-//   static String id = 'map screen';
-//   @override
-//   State<MapPage> createState() => _MapPageState();
-// }
-
-// class _MapPageState extends State<MapPage> {
-//   final _mapCtrl = MapController();
-
-//   LatLng? _myLocation;
-//   LatLng? _destination;
-//   RouteInfo? _route;
-//   bool _loadingGPS = true;
-//   bool _loadingRoute = false;
-
-//   StreamSubscription? _gpsSub;
-//   final TextEditingController _searchController = TextEditingController();
-//   List<Marker> _markers = [];
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _initGPS();
-//   }
-
-//   @override
-//   void dispose() {
-//     _gpsSub?.cancel();
-//     super.dispose();
-//   }
-
-//   Future<void> _initGPS() async {
-//     try {
-//       final loc = await LocationService.getCurrentLocation();
-//       if (!mounted) return;
-//       setState(() {
-//         _myLocation = loc;
-//         _loadingGPS = false;
-//       });
-//       _mapCtrl.move(loc, 17);
-
-//       _gpsSub = LocationService.getStream().listen((loc) {
-//         if (mounted) setState(() => _myLocation = loc);
-//       });
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() {
-//         _loadingGPS = false;
-//         _myLocation = const LatLng(30.0444, 31.2357);
-//       });
-//       _mapCtrl.move(_myLocation!, 12);
-//       _showError(e.toString());
-//     }
-//   }
-
-//   // ══ SEARCH FUNCTION ══════════════════════════════════════════════════════════
-// Future<LatLng?> searchPlace(String query) async {
-//   final url = Uri.parse(
-//     'https://nominatim.openstreetmap.org/search'
-//     '?q=${Uri.encodeComponent(query)}'
-//     '&format=json&limit=1',
-//   );
-
-//   final response = await http.get(url, headers: {
-//     'User-Agent': 'MyFlutterApp/1.0', // مطلوب من Nominatim
-//   });
-
-//   final data = jsonDecode(response.body) as List;
-//   if (data.isEmpty) return null;
-
-//   return LatLng(
-//     double.parse(data[0]['lat']),
-//     double.parse(data[0]['lon']),
-//   );
-// }
-
-
-//   Future<void> _search() async {
-//     final result = await searchPlace(_searchController.text);
-//     if (result == null) return;
-
-//     setState(() {
-//       _markers = [
-//         Marker(
-//           point: result,
-//           child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-//         ),
-//       ];
-//     });
-
-//     _mapCtrl.move(result, 15);
-//   }
-
-//   Future<void> _onMapTap(TapPosition _, LatLng point) async {
-//     if (_loadingRoute || _myLocation == null) return;
-//     setState(() {
-//       _destination = point;
-//       _route = null;
-//       _loadingRoute = true;
-//     });
-
-//     try {
-//       final route = await RoutingService.getRoute(
-//         origin: _myLocation!,
-//         destination: point,
-//       );
-//       if (!mounted) return;
-//       setState(() {
-//         _route = route;
-//         _loadingRoute = false;
-//       });
-//       _mapCtrl.fitCamera(
-//         CameraFit.bounds(
-//           bounds: LatLngBounds.fromPoints(route.points),
-//           padding: const EdgeInsets.all(60),
-//         ),
-//       );
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() => _loadingRoute = false);
-//       _showError('فشل في جلب المسار');
-//     }
-//   }
-
-//   void _clearRoute() {
-//     setState(() {
-//       _destination = null;
-//       _route = null;
-//     });
-//     if (_myLocation != null) _mapCtrl.move(_myLocation!, 15);
-//   }
-
-//   void _showError(String msg) {
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: Text(msg),
-//         backgroundColor: Colors.red[400],
-//         behavior: SnackBarBehavior.floating,
-//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final bottomPad = MediaQuery.of(context).padding.bottom;
-//     final colors = Theme.of(context).colorScheme;
-//     String tileUrl =
-//       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
-//     return Scaffold(
-//       body: Stack(
-//         children: [
-//           // ══ MAP ══════════════════════════════════════
-//           FlutterMap(
-//             mapController: _mapCtrl,
-//             options: MapOptions(
-//               initialCenter: const LatLng(30.0444, 31.2357),
-//               initialZoom: 12,
-//               minZoom: 5,
-//               maxZoom: 18,
-//               onTap: _onMapTap,
-//             ),
-//             children: [
-//               // Layer 1 — OSM Tiles
-//               TileLayer(
-//                 urlTemplate:
-//                 tileUrl,
-//                     //'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-//                 subdomains: const ['a', 'b', 'c', 'd'],
-//                 userAgentPackageName: 'com.example.drift',
-//                 maxZoom: 19,
-//               ),
-//               // Layer 2 — Route Line
-//               if (_route != null)
-//                 PolylineLayer(
-//                   polylines: [
-//                     Polyline(
-//                       points: _route!.points,
-//                       strokeWidth: 8,
-//                       color: colors.primary,
-//                       borderStrokeWidth: 2,
-//                       borderColor: Colors.white.withOpacity(0.6),
-//                     ),
-//                   ],
-//                 ),
-//               // Layer 3 — Markers
-//               MarkerLayer(
-//                 markers: [
-//                   if (_myLocation != null)
-//                     Marker(
-//                       point: _myLocation!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const UserLocationMarker(),
-//                     ),
-//                   if (_destination != null)
-//                     Marker(
-//                       point: _destination!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const DestinationMarker(),
-//                     ),
-//                 ],
-//               ),
-//             ],
-//           ),
-
-          
-
-//           // ══ GPS LOADING ══════════════════════════════
-//           if (_loadingGPS)
-//             ColoredBox(
-//               color: Colors.black,
-//               child: Center(
-//                 child: Column(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     CircularProgressIndicator(color: colors.primary),
-//                     SizedBox(height: 14),
-//                     Text(
-//                       'جاري تحديد موقعك...',
-//                       style: TextStyle(fontSize: 15, color: colors.onSurface),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-
-//             // ══ SEARCH BAR ═══════════════════════════════
-//           Positioned(
-//             top: 50,
-//             left: 16,
-//             right: 16,
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: TextField(
-//                     controller: _searchController,
-//                     decoration: InputDecoration(
-//                       hintText: 'ابحث عن مكان...',
-//                       filled: true,
-//                       fillColor: Colors.white,
-//                       border: OutlineInputBorder(
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//                 const SizedBox(width: 8),
-//                 ElevatedButton(
-//                   onPressed: _search,
-//                   child: const Icon(Icons.search),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-
-//           // ══ MAP STYLE BUTTONS ════════════════════════
-//           Positioned(
-//             bottom: 30,
-//             right: 16,
-//             child: Column(
-//               children: [
-//                 // ✅ FIX: Light mode → CartoDB light
-//                 FloatingActionButton.small(
-//                   heroTag: 'light',
-//                   onPressed: () => setState(
-//                     () => tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.light_mode),
-//                 ),
-//                 const SizedBox(height: 8),
-//                 // ✅ FIX: Dark mode → CartoDB dark
-//                 FloatingActionButton.small(
-//                   heroTag: 'dark',
-//                   onPressed: () => setState(
-//                     () => tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.dark_mode),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-            
-
-//           // ══ TOP BAR ══════════════════════════════════
-//           // if (!_loadingGPS)
-//           //   Positioned(
-//           //     top: topPad + 10,
-//           //     left: 16,
-//           //     right: 16,
-//           //     //child:  //TopBar(hasRoute: _route != null),
-//           //   ),
-
-//           // ══ FAB BUTTONS ══════════════════════════════
-//           Positioned(
-//             right: 16,
-//             bottom: _route != null ? bottomPad + 155 : bottomPad + 155,
-//             child: Column(
-//               children: [
-//                 FabBtn(
-//                   icon: Icons.my_location_rounded,
-//                   color: colors.primary,
-//                   onTap: () {
-//                     if (_myLocation != null) _mapCtrl.move(_myLocation!, 16);
-//                   },
-//                 ),
-//                 if (_destination != null) ...[
-//                   const SizedBox(height: 8),
-//                   FabBtn(
-//                     icon: Icons.clear_rounded,
-//                     color: Colors.red,
-//                     onTap: _clearRoute,
-//                   ),
-//                 ],
-//               ],
-//             ),
-//           ),
-
-//           // ══ ROUTE LOADING ════════════════════════════
-//           if (_loadingRoute)
-//             Positioned(
-//               bottom: bottomPad + 20,
-//               left: 0,
-//               right: 0,
-//               child: const Center(child: LoadingPill()),
-//             ),
-
-//           // ══ ROUTE INFO ═══════════════════════════════
-//           if (_route != null)
-//             Positioned(
-//               bottom: bottomPad,
-//               left: 0,
-//               right: 0,
-//               child: RouteInfoSheet(route: _route!, onClear: _clearRoute),
-//             ),
-
-//           if (_route == null)
-//             Positioned(
-//               bottom: bottomPad,
-//               left: 0,
-//               right: 0,
-//               child: Container(
-//                 padding: EdgeInsets.symmetric(vertical: 10,horizontal: 25),
-//                 decoration: BoxDecoration(
-//                   color: colors.background,
-//                   borderRadius: BorderRadius.circular(20),
-//                   boxShadow: [
-//                     BoxShadow(
-//                       color: colors.primary, //Colors.black.withOpacity(0.12),
-//                       blurRadius: 20,
-//                       offset: const Offset(4, -4),
-//                     ),
-//                   ],
-//                 ),
-//                 child: Text('Welcome Were we going today'),
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-  
-// }
-
-
-
-
-
-
-
-
-// ignore_for_file: deprecated_member_use
-// import 'dart:async';
-// import 'dart:convert';
-// import 'package:drift_app/services/saved_locations_service_firebase.dart';
-// import 'package:drift_app/widgets/fab_btn.dart';
-// import 'package:drift_app/widgets/loading_pill.dart';
-// import 'package:drift_app/widgets/mini_cards.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_map/flutter_map.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:latlong2/latlong.dart';
-// import '../models/route_info.dart';
-// import '../services/location_service.dart';
-// import '../services/routing_service.dart';
-// import '../widgets/map_markers.dart';
-// import '../widgets/route_info_sheet.dart';
-// import '../models/saved_location_model.dart';
-
-// class MapPage extends StatefulWidget {
-//   const MapPage({super.key});
-//   static String id = 'map screen';
-
-//   // ⚠️ Replace with FirebaseAuth.instance.currentUser!.uid
-//   static const String userId = 'YOUR_USER_ID';
-
-//   @override
-//   State<MapPage> createState() => _MapPageState();
-// }
-
-// class _MapPageState extends State<MapPage> {
-//   final _mapCtrl = MapController();
-
-//   LatLng? _myLocation;
-//   LatLng? _destination;
-//   RouteInfo? _route;
-//   bool _loadingGPS = true;
-//   bool _loadingRoute = false;
-
-//   StreamSubscription? _gpsSub;
-//   final TextEditingController _searchController = TextEditingController();
-//   List<Marker> _markers = [];
-//   String _tileUrl =
-//       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
-//   // ── Firebase saved locations ──────────────────────────────────────────────
-//   late final SavedLocationService _savedService =
-//       SavedLocationService(userId: MapPage.userId);
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _initGPS();
-//   }
-
-//   @override
-//   void dispose() {
-//     _gpsSub?.cancel();
-//     _searchController.dispose();
-//     super.dispose();
-//   }
-
-//   // ══ GPS ════════════════════════════════════════════════════════════════════
-//   Future<void> _initGPS() async {
-//     try {
-//       final loc = await LocationService.getCurrentLocation();
-//       if (!mounted) return;
-//       setState(() {
-//         _myLocation = loc;
-//         _loadingGPS = false;
-//       });
-//       _mapCtrl.move(loc, 17);
-//       _gpsSub = LocationService.getStream().listen((loc) {
-//         if (mounted) setState(() => _myLocation = loc);
-//       });
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() {
-//         _loadingGPS = false;
-//         _myLocation = const LatLng(30.0444, 31.2357);
-//       });
-//       _mapCtrl.move(_myLocation!, 12);
-//       _showError(e.toString());
-//     }
-//   }
-
-//   // ══ SEARCH ════════════════════════════════════════════════════════════════
-//   Future<LatLng?> searchPlace(String query) async {
-//     final url = Uri.parse(
-//       'https://nominatim.openstreetmap.org/search'
-//       '?q=${Uri.encodeComponent(query)}&format=json&limit=1',
-//     );
-//     final response =
-//         await http.get(url, headers: {'User-Agent': 'MyFlutterApp/1.0'});
-//     final data = jsonDecode(response.body) as List;
-//     if (data.isEmpty) return null;
-//     return LatLng(
-//       double.parse(data[0]['lat']),
-//       double.parse(data[0]['lon']),
-//     );
-//   }
-
-//   Future<void> _search() async {
-//     final result = await searchPlace(_searchController.text);
-//     if (result == null) return;
-//     setState(() {
-//       _markers = [
-//         Marker(
-//           point: result,
-//           child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-//         ),
-//       ];
-//     });
-//     _mapCtrl.move(result, 15);
-//   }
-
-//   // ══ MAP TAP → ROUTE ═══════════════════════════════════════════════════════
-//   Future<void> _onMapTap(TapPosition _, LatLng point) async {
-//     if (_loadingRoute || _myLocation == null) return;
-//     setState(() {
-//       _destination = point;
-//       _route = null;
-//       _loadingRoute = true;
-//     });
-//     try {
-//       final route = await RoutingService.getRoute(
-//         origin: _myLocation!,
-//         destination: point,
-//       );
-//       if (!mounted) return;
-//       setState(() {
-//         _route = route;
-//         _loadingRoute = false;
-//       });
-//       _mapCtrl.fitCamera(
-//         CameraFit.bounds(
-//           bounds: LatLngBounds.fromPoints(route.points),
-//           padding: const EdgeInsets.all(60),
-//         ),
-//       );
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() => _loadingRoute = false);
-//       _showError('فشل في جلب المسار');
-//     }
-//   }
-
-//   // ══ MINI CARD TAP → ROUTE ═════════════════════════════════════════════════
-//   Future<void> _goToSaved(SavedLocation loc) async {
-//     final point = LatLng(loc.lat, loc.lng);
-//     if (_myLocation == null) {
-//       _mapCtrl.move(point, 15);
-//       return;
-//     }
-//     setState(() {
-//       _destination = point;
-//       _route = null;
-//       _loadingRoute = true;
-//       _markers = [];
-//     });
-//     try {
-//       final route = await RoutingService.getRoute(
-//         origin: _myLocation!,
-//         destination: point,
-//       );
-//       if (!mounted) return;
-//       setState(() {
-//         _route = route;
-//         _loadingRoute = false;
-//       });
-//       _mapCtrl.fitCamera(
-//         CameraFit.bounds(
-//           bounds: LatLngBounds.fromPoints(route.points),
-//           padding: const EdgeInsets.all(60),
-//         ),
-//       );
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() => _loadingRoute = false);
-//       _showError('فشل في جلب المسار');
-//     }
-//   }
-
-//   void _clearRoute() {
-//     setState(() {
-//       _destination = null;
-//       _route = null;
-//       _markers = [];
-//     });
-//     if (_myLocation != null) _mapCtrl.move(_myLocation!, 15);
-//   }
-
-//   void _showError(String msg) {
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: Text(msg),
-//         backgroundColor: Colors.red[400],
-//         behavior: SnackBarBehavior.floating,
-//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//       ),
-//     );
-//   }
-
-//   // ══ BUILD ════════════════════════════════════════════════════════════════
-//   @override
-//   Widget build(BuildContext context) {
-//     final bottomPad = MediaQuery.of(context).padding.bottom;
-//     final topPad = MediaQuery.of(context).padding.top;
-//     final colors = Theme.of(context).colorScheme;
-
-//     return Scaffold(
-//       body: Stack(
-//         children: [
-//           // ══ MAP ══════════════════════════════════════
-//           FlutterMap(
-//             mapController: _mapCtrl,
-//             options: MapOptions(
-//               initialCenter: const LatLng(30.0444, 31.2357),
-//               initialZoom: 12,
-//               minZoom: 5,
-//               maxZoom: 18,
-//               onTap: _onMapTap,
-//             ),
-//             children: [
-//               TileLayer(
-//                 urlTemplate: _tileUrl,
-//                 subdomains: const ['a', 'b', 'c', 'd'],
-//                 userAgentPackageName: 'com.example.drift',
-//                 maxZoom: 19,
-//               ),
-//               if (_route != null)
-//                 PolylineLayer(
-//                   polylines: [
-//                     Polyline(
-//                       points: _route!.points,
-//                       strokeWidth: 8,
-//                       color: colors.primary,
-//                       borderStrokeWidth: 2,
-//                       borderColor: Colors.white.withOpacity(0.6),
-//                     ),
-//                   ],
-//                 ),
-//               MarkerLayer(
-//                 markers: [
-//                   if (_myLocation != null)
-//                     Marker(
-//                       point: _myLocation!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const UserLocationMarker(),
-//                     ),
-//                   if (_destination != null)
-//                     Marker(
-//                       point: _destination!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const DestinationMarker(),
-//                     ),
-//                   ..._markers,
-//                 ],
-//               ),
-//             ],
-//           ),
-
-//           // ══ GPS LOADING ══════════════════════════════
-//           if (_loadingGPS)
-//             ColoredBox(
-//               color: Colors.black,
-//               child: Center(
-//                 child: Column(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     CircularProgressIndicator(color: colors.primary),
-//                     const SizedBox(height: 14),
-//                     Text(
-//                       'جاري تحديد موقعك...',
-//                       style: TextStyle(fontSize: 15, color: colors.onSurface),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-
-//           // ══ SEARCH BAR + MINI CARDS ═══════════════════
-//           Positioned(
-//             top: topPad + 10,
-//             left: 16,
-//             right: 16,
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 // ── Search row ─────────────────────────────────────────────────
-//                 Row(
-//                   children: [
-//                     Expanded(
-//                       child: TextField(
-//                         controller: _searchController,
-//                         decoration: InputDecoration(
-//                           hintText: 'Search City...',
-//                           hintStyle: TextStyle(color: colors.onSurface),
-//                           filled: true,
-//                           fillColor: colors.background,
-//                           border: OutlineInputBorder(
-//                             borderRadius: BorderRadius.circular(12),
-//                           ),
-//                         ),
-//                       ),
-//                     ),
-//                     const SizedBox(width: 8),
-//                     ElevatedButton(
-//                       onPressed: _search,
-//                       child: const Icon(Icons.search),
-//                     ),
-//                   ],
-//                 ),
-
-//                 const SizedBox(height: 10),
-
-//                 // ── Mini Cards row (Firebase real-time) ────────────────────────
-//                 StreamBuilder<List<SavedLocation>>(
-//                   stream: _savedService.stream(),
-//                   builder: (context, snapshot) {
-//                     final locations = snapshot.data ?? [];
-//                     if (locations.isEmpty) return const SizedBox.shrink();
-
-//                     return SizedBox(
-//                       height: 50,
-//                       child: ListView.separated(
-//                         scrollDirection: Axis.horizontal,
-//                         itemCount: locations.length,
-//                         separatorBuilder: (_, _) => const SizedBox(width: 8),
-//                         itemBuilder: (_, i) => MiniCard(
-//                           label: locations[i].name,
-//                           onTap: () => _goToSaved(locations[i]),
-//                         ),
-//                       ),
-//                     );
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // ══ MAP STYLE BUTTONS ════════════════════════
-//           Positioned(
-//             bottom: 255,
-//             right: 16,
-//             child: Column(
-//               children: [
-//                 FloatingActionButton.small(
-//                   heroTag: 'light',
-//                   onPressed: () => setState(
-//                     () => _tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.light_mode),
-//                 ),
-//                 const SizedBox(height: 8),
-//                 FloatingActionButton.small(
-//                   heroTag: 'dark',
-//                   onPressed: () => setState(
-//                     () => _tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.dark_mode),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // ══ FAB BUTTONS ══════════════════════════════
-//           Positioned(
-//             right: 16,
-//             bottom: bottomPad + 130,
-//             child: Column(
-//               children: [
-//                 FabBtn(
-//                   icon: Icons.my_location_rounded,
-//                   color: colors.primary,
-//                   onTap: () {
-//                     if (_myLocation != null) _mapCtrl.move(_myLocation!, 16);
-//                   },
-//                 ),
-//                 if (_destination != null) ...[
-//                   const SizedBox(height: 8),
-//                   FabBtn(
-//                     icon: Icons.clear_rounded,
-//                     color: Colors.red,
-//                     onTap: _clearRoute,
-//                   ),
-//                 ],
-//               ],
-//             ),
-//           ),
-
-//           // ══ ROUTE LOADING ════════════════════════════
-//           if (_loadingRoute)
-//             Positioned(
-//               bottom: bottomPad + 20,
-//               left: 0,
-//               right: 0,
-//               child: const Center(child: LoadingPill()),
-//             ),
-
-//           // ══ ROUTE INFO ═══════════════════════════════
-//           if (_route != null)
-//             Positioned(
-//               bottom: bottomPad,
-//               left: 0,
-//               right: 0,
-//               child: RouteInfoSheet(route: _route!, onClear: _clearRoute),
-//             ),
-
-//           if (_route == null)
-//             Positioned(
-//               bottom: bottomPad,
-//               left: 0,
-//               right: 0,
-//               child: MiniCard(label: 'home', onTap: _goToSaved)
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-
-
-
-
-
-// // ignore_for_file: deprecated_member_use
-// import 'dart:async';
-// import 'dart:convert';
-// import 'package:drift_app/widgets/fab_btn.dart';
-// import 'package:drift_app/widgets/loading_pill.dart';
-// import 'package:drift_app/widgets/mini_cards.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_map/flutter_map.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:latlong2/latlong.dart';
-// import '../models/route_info.dart';
-// import '../services/location_service.dart';
-// import '../services/routing_service.dart';
-// import '../widgets/map_markers.dart';
-// import '../widgets/route_info_sheet.dart';
-
-// class MapPage extends StatefulWidget {
-//   const MapPage({super.key});
-//   static String id = 'map screen';
-//   @override
-//   State<MapPage> createState() => _MapPageState();
-// }
-
-// class _MapPageState extends State<MapPage> {
-//   final _mapCtrl = MapController();
-
-//   LatLng? _myLocation;
-//   LatLng? _destination;
-//   RouteInfo? _route;
-//   bool _loadingGPS = true;
-//   bool _loadingRoute = false;
-
-//   StreamSubscription? _gpsSub;
-//   final TextEditingController _searchController = TextEditingController();
-//   List<Marker> _markers = [];
-//   String _tileUrl =
-//       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _initGPS();
-//   }
-
-//   @override
-//   void dispose() {
-//     _gpsSub?.cancel();
-//     _searchController.dispose();
-//     super.dispose();
-//   }
-
-//   Future<void> _initGPS() async {
-//     try {
-//       final loc = await LocationService.getCurrentLocation();
-//       if (!mounted) return;
-//       setState(() {
-//         _myLocation = loc;
-//         _loadingGPS = false;
-//       });
-//       _mapCtrl.move(loc, 17);
-
-//       _gpsSub = LocationService.getStream().listen((loc) {
-//         if (mounted) setState(() => _myLocation = loc);
-//       });
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() {
-//         _loadingGPS = false;
-//         _myLocation = const LatLng(30.0444, 31.2357);
-//       });
-//       _mapCtrl.move(_myLocation!, 12);
-//       _showError(e.toString());
-//     }
-//   }
-
-//   // ══ SEARCH FUNCTION ══════════════════════════════════════════════════════════
-//   Future<LatLng?> searchPlace(String query) async {
-//     final url = Uri.parse(
-//       'https://nominatim.openstreetmap.org/search'
-//       '?q=${Uri.encodeComponent(query)}'
-//       '&format=json&limit=1',
-//     );
-
-//     final response = await http.get(url, headers: {
-//       'User-Agent': 'MyFlutterApp/1.0',
-//     });
-
-//     final data = jsonDecode(response.body) as List;
-//     if (data.isEmpty) return null;
-
-//     return LatLng(
-//       double.parse(data[0]['lat']),
-//       double.parse(data[0]['lon']),
-//     );
-//   }
-
-//   Future<void> _search() async {
-//     final result = await searchPlace(_searchController.text);
-//     if (result == null) return;
-
-//     setState(() {
-//       _markers = [
-//         Marker(
-//           point: result,
-//           child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-//         ),
-//       ];
-//     });
-
-//     _mapCtrl.move(result, 15);
-//   }
-
-//   Future<void> _onMapTap(TapPosition _, LatLng point) async {
-//     if (_loadingRoute || _myLocation == null) return;
-//     setState(() {
-//       _destination = point;
-//       _route = null;
-//       _loadingRoute = true;
-//     });
-
-//     try {
-//       final route = await RoutingService.getRoute(
-//         origin: _myLocation!,
-//         destination: point,
-//       );
-//       if (!mounted) return;
-//       setState(() {
-//         _route = route;
-//         _loadingRoute = false;
-//       });
-//       _mapCtrl.fitCamera(
-//         CameraFit.bounds(
-//           bounds: LatLngBounds.fromPoints(route.points),
-//           padding: const EdgeInsets.all(60),
-//         ),
-//       );
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() => _loadingRoute = false);
-//       _showError('فشل في جلب المسار');
-//     }
-//   }
-
-//   void _clearRoute() {
-//     setState(() {
-//       _destination = null;
-//       _route = null;
-//       _markers = [];
-//     });
-//     if (_myLocation != null) _mapCtrl.move(_myLocation!, 15);
-//   }
-
-//   void _showError(String msg) {
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: Text(msg),
-//         backgroundColor: Colors.red[400],
-//         behavior: SnackBarBehavior.floating,
-//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final bottomPad = MediaQuery.of(context).padding.bottom;
-//     final colors = Theme.of(context).colorScheme;
-
-//     return Scaffold(
-//       body: Stack(
-//         children: [
-//           // ══ MAP ══════════════════════════════════════
-//           FlutterMap(
-//             mapController: _mapCtrl,
-//             options: MapOptions(
-//               initialCenter: const LatLng(30.0444, 31.2357),
-//               initialZoom: 12,
-//               minZoom: 5,
-//               maxZoom: 18,
-//               onTap: _onMapTap,
-//             ),
-//             children: [
-//               TileLayer(
-//                 urlTemplate: _tileUrl,
-//                 subdomains: const ['a', 'b', 'c', 'd'],
-//                 userAgentPackageName: 'com.example.drift',
-//                 maxZoom: 19,
-//               ),
-//               // Layer 2 — Route Line
-//               if (_route != null)
-//                 PolylineLayer(
-//                   polylines: [
-//                     Polyline(
-//                       points: _route!.points,
-//                       strokeWidth: 8,
-//                       color: colors.primary,
-//                       borderStrokeWidth: 2,
-//                       borderColor: Colors.white.withOpacity(0.6),
-//                     ),
-//                   ],
-//                 ),
-//               // Layer 3 — Markers
-//               MarkerLayer(
-//                 markers: [
-//                   if (_myLocation != null)
-//                     Marker(
-//                       point: _myLocation!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const UserLocationMarker(),
-//                     ),
-//                   if (_destination != null)
-//                     Marker(
-//                       point: _destination!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const DestinationMarker(),
-//                     ),
-//                   ..._markers,
-//                 ],
-//               ),
-//             ],
-//           ),
-
-//           // ══ GPS LOADING ══════════════════════════════
-//           if (_loadingGPS)
-//             ColoredBox(
-//               color: Colors.black,
-//               child: Center(
-//                 child: Column(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     CircularProgressIndicator(color: colors.primary),
-//                     const SizedBox(height: 14),
-//                     Text(
-//                       'جاري تحديد موقعك...',
-//                       style: TextStyle(fontSize: 15, color: colors.onSurface),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-
-//           // ══ SEARCH BAR ═══════════════════════════════
-//           Positioned(
-//             top: 50,
-//             left: 16,
-//             right: 16,
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: TextField(
-//                     controller: _searchController,
-//                     decoration: InputDecoration(
-//                       hintText:'Search City...',
-//                       hintStyle: TextStyle
-//                       (
-//                         color: colors.onSurface
-//                       ),
-//                       filled: true,
-//                       fillColor: colors.background,
-//                       border: OutlineInputBorder(
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                     ),
-                    
-//                   ),
-//                 ),
-//                 const SizedBox(width: 8),
-//                 ElevatedButton(
-//                   onPressed: _search,
-//                   child: const Icon(Icons.search),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // ══ MAP STYLE BUTTONS ════════════════════════
-//           Positioned(
-//             bottom: 255,
-//             right: 16,
-//             child: Column(
-//               children: [
-//                 FloatingActionButton.small(
-//                   heroTag: 'light',
-//                   onPressed: () => setState(
-//                     () => _tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.light_mode),
-//                 ),
-//                 const SizedBox(height: 8),
-//                 FloatingActionButton.small(
-//                   heroTag: 'dark',
-//                   onPressed: () => setState(
-//                     () => _tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.dark_mode),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // ══ FAB BUTTONS ══════════════════════════════
-//           Positioned(
-//             right: 16,
-//             bottom: bottomPad + 130,
-//             child: Column(
-//               children: [
-//                 FabBtn(
-//                   icon: Icons.my_location_rounded,
-//                   color: colors.primary,
-//                   onTap: () {
-//                     if (_myLocation != null) _mapCtrl.move(_myLocation!, 16);
-//                   },
-//                 ),
-//                 if (_destination != null) ...[
-//                   const SizedBox(height: 8),
-//                   FabBtn(
-//                     icon: Icons.clear_rounded,
-//                     color: Colors.red,
-//                     onTap: _clearRoute,
-//                   ),
-//                 ],
-//               ],
-//             ),
-//           ),
-
-//           // ══ ROUTE LOADING ════════════════════════════
-//           if (_loadingRoute)
-//             Positioned(
-//               bottom: bottomPad + 20,
-//               left: 0,
-//               right: 0,
-//               child: const Center(child: LoadingPill()),
-//             ),
-
-//           // ══ ROUTE INFO ═══════════════════════════════
-//           if (_route != null)
-//             Positioned(
-//               bottom: bottomPad,
-//               left: 0,
-//               right: 0,
-//               child: RouteInfoSheet(route: _route!, onClear: _clearRoute),
-//             ),
-
-//           // if (_route == null)
-//           //   Positioned(
-//           //     bottom: bottomPad-2,
-//           //     left: 0,
-//           //     right: 0,
-//           //     child: Container(
-//           //       padding:
-//           //           const EdgeInsets.only(top: 10, right: 25,left: 25,bottom: 25),
-//           //       decoration: BoxDecoration(
-//           //         color: colors.background,
-//           //         borderRadius: BorderRadius.circular(20),
-//           //         boxShadow: [
-//           //           BoxShadow(
-//           //             color: colors.primary,
-//           //             blurRadius: 20,
-//           //             offset: const Offset(4, -4),
-//           //           ),
-//           //         ],
-//           //       ),
-//           //       child: Row
-//           //       (
-//           //         children: 
-//           //         [
-//           //           MiniCards(text: 'travel',),
-//           //           const SizedBox( width: 5,),
-//           //           MiniCards(text: 'travel',),
-//           //           const SizedBox( width: 5,),
-//           //           MiniCards(text: 'travel',),
-//           //           const SizedBox( width: 5,),
-//           //           MiniCards(text: 'travel',),
-
-//           //         ],
-//           //       ) 
-//           //     ),
-//           //   ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// // ignore_for_file: deprecated_member_use
-// import 'dart:async';
-// import 'dart:convert';
-// import 'package:drift_app/services/saved_locations_service_firebase.dart';
-// import 'package:drift_app/widgets/fab_btn.dart';
-// import 'package:drift_app/widgets/loading_pill.dart';
-// import 'package:drift_app/widgets/mini_cards.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_map/flutter_map.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:latlong2/latlong.dart';
-// import '../models/route_info.dart';
-// import '../services/location_service.dart';
-// import '../services/routing_service.dart';
-// import '../widgets/map_markers.dart';
-// import '../widgets/route_info_sheet.dart';
-// import '../models/saved_location_model.dart';
-
-// class MapPage extends StatefulWidget {
-//   const MapPage({super.key});
-//   static String id = 'map screen';
-
-//   // ⚠️ Replace with FirebaseAuth.instance.currentUser!.uid
-//   static const String userId = 'YOUR_USER_ID';
-
-//   @override
-//   State<MapPage> createState() => _MapPageState();
-// }
-
-// class _MapPageState extends State<MapPage> {
-//   final _mapCtrl = MapController();
-
-//   LatLng? _myLocation;
-//   LatLng? _destination;
-//   RouteInfo? _route;
-//   bool _loadingGPS = true;
-//   bool _loadingRoute = false;
-
-//   StreamSubscription? _gpsSub;
-//   final TextEditingController _searchController = TextEditingController();
-//   List<Marker> _markers = [];
-//   String _tileUrl =
-//       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
-//   late final SavedLocationService _savedService =
-//       SavedLocationService(userId: MapPage.userId);
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _initGPS();
-//   }
-
-//   @override
-//   void dispose() {
-//     _gpsSub?.cancel();
-//     _searchController.dispose();
-//     super.dispose();
-//   }
-
-//   // ══ GPS ════════════════════════════════════════════════════════════════════
-//   Future<void> _initGPS() async {
-//     try {
-//       final loc = await LocationService.getCurrentLocation();
-//       if (!mounted) return;
-//       setState(() {
-//         _myLocation = loc;
-//         _loadingGPS = false;
-//       });
-//       _mapCtrl.move(loc, 17);
-//       _gpsSub = LocationService.getStream().listen((loc) {
-//         if (mounted) setState(() => _myLocation = loc);
-//       });
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() {
-//         _loadingGPS = false;
-//         _myLocation = const LatLng(30.0444, 31.2357);
-//       });
-//       _mapCtrl.move(_myLocation!, 12);
-//       _showError(e.toString());
-//     }
-//   }
-
-//   // ══ SEARCH ════════════════════════════════════════════════════════════════
-//   Future<LatLng?> searchPlace(String query) async {
-//     final url = Uri.parse(
-//       'https://nominatim.openstreetmap.org/search'
-//       '?q=${Uri.encodeComponent(query)}&format=json&limit=1',
-//     );
-//     final response =
-//         await http.get(url, headers: {'User-Agent': 'MyFlutterApp/1.0'});
-//     final data = jsonDecode(response.body) as List;
-//     if (data.isEmpty) return null;
-//     return LatLng(
-//       double.parse(data[0]['lat']),
-//       double.parse(data[0]['lon']),
-//     );
-//   }
-
-//   Future<void> _search() async {
-//     final result = await searchPlace(_searchController.text);
-//     if (result == null) return;
-//     setState(() {
-//       _markers = [
-//         Marker(
-//           point: result,
-//           child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-//         ),
-//       ];
-//     });
-//     _mapCtrl.move(result, 15);
-//   }
-
-//   // ══ MAP TAP → ROUTE ═══════════════════════════════════════════════════════
-//   Future<void> _onMapTap(TapPosition _, LatLng point) async {
-//     if (_loadingRoute || _myLocation == null) return;
-//     setState(() {
-//       _destination = point;
-//       _route = null;
-//       _loadingRoute = true;
-//     });
-//     try {
-//       final route = await RoutingService.getRoute(
-//         origin: _myLocation!,
-//         destination: point,
-//       );
-//       if (!mounted) return;
-//       setState(() {
-//         _route = route;
-//         _loadingRoute = false;
-//       });
-//       _mapCtrl.fitCamera(
-//         CameraFit.bounds(
-//           bounds: LatLngBounds.fromPoints(route.points),
-//           padding: const EdgeInsets.all(60),
-//         ),
-//       );
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() => _loadingRoute = false);
-//       _showError('فشل في جلب المسار');
-//     }
-//   }
-
-//   // ══ MINI CARD TAP → ROUTE ═════════════════════════════════════════════════
-//   Future<void> _goToSaved(SavedLocation loc) async {
-//     final point = LatLng(loc.lat, loc.lng);
-//     if (_myLocation == null) {
-//       _mapCtrl.move(point, 15);
-//       return;
-//     }
-//     setState(() {
-//       _destination = point;
-//       _route = null;
-//       _loadingRoute = true;
-//       _markers = [];
-//     });
-//     try {
-//       final route = await RoutingService.getRoute(
-//         origin: _myLocation!,
-//         destination: point,
-//       );
-//       if (!mounted) return;
-//       setState(() {
-//         _route = route;
-//         _loadingRoute = false;
-//       });
-//       _mapCtrl.fitCamera(
-//         CameraFit.bounds(
-//           bounds: LatLngBounds.fromPoints(route.points),
-//           padding: const EdgeInsets.all(60),
-//         ),
-//       );
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() => _loadingRoute = false);
-//       _showError('فشل في جلب المسار');
-//     }
-//   }
-
-//   void _clearRoute() {
-//     setState(() {
-//       _destination = null;
-//       _route = null;
-//       _markers = [];
-//     });
-//     if (_myLocation != null) _mapCtrl.move(_myLocation!, 15);
-//   }
-
-//   void _showError(String msg) {
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: Text(msg),
-//         backgroundColor: Colors.red[400],
-//         behavior: SnackBarBehavior.floating,
-//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//       ),
-//     );
-//   }
-
-//   // ══ BUILD ════════════════════════════════════════════════════════════════
-//   @override
-//   Widget build(BuildContext context) {
-//     final bottomPad = MediaQuery.of(context).padding.bottom;
-//     final topPad = MediaQuery.of(context).padding.top;
-//     final colors = Theme.of(context).colorScheme;
-
-//     return Scaffold(
-//       body: Stack(
-//         children: [
-//           // ══ MAP ══════════════════════════════════════
-//           FlutterMap(
-//             mapController: _mapCtrl,
-//             options: MapOptions(
-//               initialCenter: const LatLng(30.0444, 31.2357),
-//               initialZoom: 12,
-//               minZoom: 5,
-//               maxZoom: 18,
-//               onTap: _onMapTap,
-//             ),
-//             children: [
-//               TileLayer(
-//                 urlTemplate: _tileUrl,
-//                 subdomains: const ['a', 'b', 'c', 'd'],
-//                 userAgentPackageName: 'com.example.drift',
-//                 maxZoom: 19,
-//               ),
-//               if (_route != null)
-//                 PolylineLayer(
-//                   polylines: [
-//                     Polyline(
-//                       points: _route!.points,
-//                       strokeWidth: 8,
-//                       color: colors.primary,
-//                       borderStrokeWidth: 2,
-//                       borderColor: Colors.white.withOpacity(0.6),
-//                     ),
-//                   ],
-//                 ),
-//               MarkerLayer(
-//                 markers: [
-//                   if (_myLocation != null)
-//                     Marker(
-//                       point: _myLocation!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const UserLocationMarker(),
-//                     ),
-//                   if (_destination != null)
-//                     Marker(
-//                       point: _destination!,
-//                       width: 44,
-//                       height: 44,
-//                       child: const DestinationMarker(),
-//                     ),
-//                   ..._markers,
-//                 ],
-//               ),
-//             ],
-//           ),
-
-//           // ══ GPS LOADING ══════════════════════════════
-//           if (_loadingGPS)
-//             ColoredBox(
-//               color: Colors.black,
-//               child: Center(
-//                 child: Column(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     CircularProgressIndicator(color: colors.primary),
-//                     const SizedBox(height: 14),
-//                     Text(
-//                       'جاري تحديد موقعك...',
-//                       style: TextStyle(fontSize: 15, color: colors.onSurface),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-
-//           // ══ SEARCH BAR + MINI CARDS ═══════════════════
-//           Positioned(
-//             top: topPad + 10,
-//             left: 16,
-//             right: 16,
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 // ── Search row ───────────────────────────────────────────────
-//                 Row(
-//                   children: [
-//                     Expanded(
-//                       child: TextField(
-//                         controller: _searchController,
-//                         decoration: InputDecoration(
-//                           hintText: 'Search City...',
-//                           hintStyle: TextStyle(color: colors.onSurface),
-//                           filled: true,
-//                           fillColor: colors.background,
-//                           border: OutlineInputBorder(
-//                             borderRadius: BorderRadius.circular(12),
-//                           ),
-//                         ),
-//                       ),
-//                     ),
-//                     const SizedBox(width: 8),
-//                     ElevatedButton(
-//                       onPressed: _search,
-//                       child: const Icon(Icons.search),
-//                     ),
-//                   ],
-//                 ),
-
-//                 const SizedBox(height: 10),
-
-//                 // ── Mini Cards (Firebase real-time) ──────────────────────────
-//                 StreamBuilder<List<SavedLocation>>(
-//                   stream: _savedService.stream(),
-//                   builder: (context, snapshot) {
-//                     final locations = snapshot.data ?? [];
-//                     if (locations.isEmpty) return const SizedBox.shrink();
-
-//                     return SizedBox(
-//                       height: 50,
-//                       child: ListView.separated(
-//                         scrollDirection: Axis.horizontal,
-//                         itemCount: locations.length,
-//                         // ✅ FIX 1: اتنين parameters مختلفين (_, __) مش (_, _)
-//                         separatorBuilder: (_, __) =>
-//                             const SizedBox(width: 8),
-//                         itemBuilder: (_, i) => MiniCard(
-//                           label: locations[i].name,
-//                           // ✅ FIX 2: onTap محتاج VoidCallback فبنعمل closure
-//                           onTap: () => _goToSaved(locations[i]),
-//                         ),
-//                       ),
-//                     );
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // ══ MAP STYLE BUTTONS ════════════════════════
-//           Positioned(
-//             bottom: 255,
-//             right: 16,
-//             child: Column(
-//               children: [
-//                 FloatingActionButton.small(
-//                   heroTag: 'light',
-//                   onPressed: () => setState(
-//                     () => _tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.light_mode),
-//                 ),
-//                 const SizedBox(height: 8),
-//                 FloatingActionButton.small(
-//                   heroTag: 'dark',
-//                   onPressed: () => setState(
-//                     () => _tileUrl =
-//                         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-//                   ),
-//                   child: const Icon(Icons.dark_mode),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // ══ FAB BUTTONS ══════════════════════════════
-//           Positioned(
-//             right: 16,
-//             bottom: bottomPad + 130,
-//             child: Column(
-//               children: [
-//                 FabBtn(
-//                   icon: Icons.my_location_rounded,
-//                   color: colors.primary,
-//                   onTap: () {
-//                     if (_myLocation != null) _mapCtrl.move(_myLocation!, 16);
-//                   },
-//                 ),
-//                 if (_destination != null) ...[
-//                   const SizedBox(height: 8),
-//                   FabBtn(
-//                     icon: Icons.clear_rounded,
-//                     color: Colors.red,
-//                     onTap: _clearRoute,
-//                   ),
-//                 ],
-//               ],
-//             ),
-//           ),
-
-
-//           // ══ ADD NEW SAVED LOCTION ══════════════════════════════
-//           Positioned(
-//             right: 16,
-//             bottom: bottomPad + 230,
-//             child: Column(
-//               children: [
-//                 FabBtn(
-//                   icon: Icons.add,
-//                   color: colors.primary,
-//                   onTap: () {
-//                     _goToSaved(loc);
-//                   },
-//                 ),
-//                 if (_destination != null) ...[
-//                   const SizedBox(height: 8),
-//                   FabBtn(
-//                     icon: Icons.clear_rounded,
-//                     color: Colors.red,
-//                     onTap: _clearRoute,
-//                   ),
-//                 ],
-//               ],
-//             ),
-//           ),
-
-//           // ══ ROUTE LOADING ════════════════════════════
-//           if (_loadingRoute)
-//             Positioned(
-//               bottom: bottomPad + 20,
-//               left: 0,
-//               right: 0,
-//               child: const Center(child: LoadingPill()),
-//             ),
-
-//           // ══ ROUTE INFO ═══════════════════════════════
-//           if (_route != null)
-//             Positioned(
-//               bottom: bottomPad,
-//               left: 0,
-//               right: 0,
-//               child: RouteInfoSheet(route: _route!, onClear: _clearRoute),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-
-// ══ FAB BUTTONS ══════════════════════════════
-          // Positioned(
-          //   right: 16,
-          //   bottom: bottomPad + 130,
-          //   child: Column(
-          //     children: [
-          //       // ── My Location ───────────────────────────────────────────────
-          //       FabBtn(
-          //         icon: Icons.my_location_rounded,
-          //         color: colors.primary,
-          //         onTap: () {
-          //           if (_myLocation != null) _mapCtrl.move(_myLocation!, 16);
-          //         },
-          //       ),
-          //       const SizedBox(height: 8),
-
-          //       // ── Add saved location ────────────────────────────────────────
-          //       FabBtn(
-          //         icon: Icons.add_location_alt_rounded,
-          //         color: colors.primary,
-          //         onTap: _openAddSheet,
-          //       ),
-
-          //       // ── Clear route (only when route is active) ───────────────────
-          //       if (_destination != null) ...[
-          //         const SizedBox(height: 8),
-          //         FabBtn(
-          //           icon: Icons.clear_rounded,
-          //           color: Colors.red,
-          //           onTap: _clearRoute,
-          //         ),
-          //       ],
-          //     ],
-          //   ),
-          // ),
-
-
-
-
-// class CustomDrawer extends StatelessWidget {
-//   final GlobalKey<ScaffoldState> scaffoldKey;
-//   final VoidCallback onSettingsTap;
-
-//   const CustomDrawer({
-//     super.key,
-//     required this.scaffoldKey,
-//     required this.onSettingsTap,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final colors = Theme.of(context).colorScheme;
-
-//     return Padding(
-//       padding: const EdgeInsets.only(left: 55, top: 31, bottom: 28),
-//       child: ClipRRect(
-//         borderRadius: BorderRadius.circular(18),
-//         child: BackdropFilter(
-//           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-//           child: Container(
-//             width: 320,
-//             padding: const EdgeInsets.all(20),
-//             decoration: BoxDecoration(
-//               boxShadow: [
-//                 BoxShadow(
-//                   color: Colors.blue.withValues(alpha: 0.2),
-//                   blurRadius: 40,
-//                   spreadRadius: 5,
-//                 ),
-//               ],
-//               borderRadius: BorderRadius.circular(25),
-//               color: Colors.white.withValues(alpha: 0.05),
-//               border: Border.all(
-//                 color: colors.onSurface.withValues(alpha: 0.3),
-//                 width: 1,
-//               ),
-//             ),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 DrawerLists(
-//                   title: 'Settings',
-//                   trailing: Icons.settings,
-//                   onTap: () {
-//                     Navigator.of(context).pop(); // يقفل الـ drawer
-//                     onSettingsTap(); // ينفذ الـ navigation من برا
-//                   },
-//                 ),
-//                 DrawerLists(
-//                   title: 'Log Out',
-//                   trailing: Icons.logout_rounded,
-//                   onTap: () {
-//                     scaffoldKey.currentState?.closeEndDrawer();
-//                     handleLogout(context, colors);
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-
-      // endDrawer: CustomDrawer(
-      //   scaffoldKey: _scaffoldKey,
-      //   onSettingsTap: () {
-      //     Future.delayed(const Duration(milliseconds: 300), () {
-      //       Navigator.pushNamed(context, SettingsPage.id);
-      //     });
-      //   },
-      // ),
-
-
-
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:drift_app/cubits/forgot_password/forgot_pass_cubit.dart';
 // import 'package:drift_app/cubits/google_signin/google_signin_cubit.dart';
@@ -3652,3 +1876,998 @@
 //     );
 //   }
 // }
+//========================================================================================
+// // ignore_for_file: deprecated_member_use
+// import 'dart:async';
+// import 'dart:convert';
+// import 'package:drift_app/cubits/theme_cubit/theme_cubit.dart';
+// import 'package:drift_app/cubits/theme_cubit/theme_state.dart';
+// import 'package:drift_app/services/saved_locations_service_firebase.dart';
+// import 'package:drift_app/widgets/custom_drawer.dart';
+// import 'package:drift_app/widgets/custom_text_field.dart';
+// import 'package:drift_app/widgets/fab_btn.dart';
+// import 'package:drift_app/widgets/loading_pill.dart';
+// import 'package:drift_app/widgets/mini_cards.dart';
+// import 'package:drift_app/widgets/trip_bottom_sheet.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:flutter_map/flutter_map.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:latlong2/latlong.dart';
+// import '../models/route_info.dart';
+// import '../models/saved_location_model.dart';
+// import '../pages/add_save_location.dart';
+// import '../services/location_service.dart';
+// import '../services/routing_service.dart';
+// import '../widgets/map_markers.dart';
+
+// class MapPage extends StatefulWidget {
+//   const MapPage({super.key});
+//   static String id = 'map page';
+
+//   static String get userId => FirebaseAuth.instance.currentUser?.uid ?? '';
+
+//   @override
+//   State<MapPage> createState() => _MapPageState();
+// }
+
+// class _MapPageState extends State<MapPage> {
+//   final _mapCtrl = MapController();
+
+//   LatLng? _myLocation;
+//   LatLng? _destination;
+//   RouteInfo? _route;
+//   bool _loadingGPS = true;
+//   bool _loadingRoute = false;
+//   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+//   final GlobalKey<TripBottomSheetState> _tripSheetKey =
+//       GlobalKey<TripBottomSheetState>();
+
+//   StreamSubscription? _gpsSub;
+//   final TextEditingController _searchController = TextEditingController();
+//   List<Marker> _markers = [];
+//   late String mapMode;
+//   String _tileUrl =
+//       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+
+//   late final SavedLocationService _savedService = SavedLocationService(
+//     userId: MapPage.userId,
+//   );
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initGPS();
+//   }
+
+//   @override
+//   void dispose() {
+//     _gpsSub?.cancel();
+//     _searchController.dispose();
+//     super.dispose();
+//   }
+
+//   // ══ GPS ════════════════════════════════════════════════════════════════════
+//   Future<void> _initGPS() async {
+//     try {
+//       final loc = await LocationService.getCurrentLocation();
+//       if (!mounted) return;
+//       setState(() {
+//         _myLocation = loc;
+//         _loadingGPS = false;
+//       });
+//       _mapCtrl.move(loc, 17);
+//       _gpsSub = LocationService.getStream().listen((loc) {
+//         if (mounted) setState(() => _myLocation = loc);
+//       });
+//     } catch (e) {
+//       if (!mounted) return;
+//       setState(() {
+//         _loadingGPS = false;
+//         _myLocation = const LatLng(30.0444, 31.2357);
+//       });
+//       _mapCtrl.move(_myLocation!, 12);
+//       _showError(e.toString());
+//     }
+//   }
+
+//   // ══ SEARCH (top bar) ══════════════════════════════════════════════════════
+//   Future<LatLng?> searchPlace(String query) async {
+//     final url = Uri.parse(
+//       'https://nominatim.openstreetmap.org/search'
+//       '?q=${Uri.encodeComponent(query)}&format=json&limit=1',
+//     );
+//     final response = await http.get(
+//       url,
+//       headers: {'User-Agent': 'MyFlutterApp/1.0'},
+//     );
+//     final data = jsonDecode(response.body) as List;
+//     if (data.isEmpty) return null;
+//     return LatLng(double.parse(data[0]['lat']), double.parse(data[0]['lon']));
+//   }
+
+//   Future<void> _search() async {
+//     final result = await searchPlace(_searchController.text);
+//     if (result == null) return;
+//     setState(() {
+//       _markers = [
+//         Marker(
+//           point: result,
+//           child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+//         ),
+//       ];
+//     });
+//     _mapCtrl.move(result, 15);
+//   }
+
+//   // ══ MAP TAP → ROUTE ═══════════════════════════════════════════════════════
+//   Future<void> _onMapTap(TapPosition _, LatLng point) async {
+//     if (_loadingRoute || _myLocation == null) return;
+//     setState(() {
+//       _destination = point;
+//       _route = null;
+//       _loadingRoute = true;
+//     });
+//     try {
+//       final route = await RoutingService.getRoute(
+//         origin: _myLocation!,
+//         destination: point,
+//       );
+//       if (!mounted) return;
+//       setState(() {
+//         _route = route;
+//         _loadingRoute = false;
+//       });
+//       _mapCtrl.fitCamera(
+//         CameraFit.bounds(
+//           bounds: LatLngBounds.fromPoints(route.points),
+//           padding: const EdgeInsets.all(60),
+//         ),
+//       );
+
+//       // 👇 Notify the trip sheet about the new route
+//       final distKm = route.distanceMeters / 1000;
+//       final durMin = route.durationSeconds / 60;
+//       _tripSheetKey.currentState?.updateRouteInfo(
+//         distanceKm: distKm,
+//         durationMin: durMin,
+//       );
+//     } catch (e) {
+//       if (!mounted) return;
+//       setState(() => _loadingRoute = false);
+//       _showError('فشل في جلب المسار');
+//     }
+//   }
+
+//   // ══ TRIP SHEET: destination selected ═════════════════════════════════════
+//   Future<void> _onTripDestinationSelected(LatLng point, String cityName) async {
+//     if (_myLocation == null) {
+//       _mapCtrl.move(point, 13);
+//       return;
+//     }
+//     setState(() {
+//       _destination = point;
+//       _route = null;
+//       _loadingRoute = true;
+//       _markers = [];
+//     });
+//     try {
+//       final route = await RoutingService.getRoute(
+//         origin: _myLocation!,
+//         destination: point,
+//       );
+//       if (!mounted) return;
+//       setState(() {
+//         _route = route;
+//         _loadingRoute = false;
+//       });
+//       _mapCtrl.fitCamera(
+//         CameraFit.bounds(
+//           bounds: LatLngBounds.fromPoints(route.points),
+//           padding: const EdgeInsets.all(60),
+//         ),
+//       );
+
+//       // Update trip sheet with route info
+//       final distKm = route.distanceMeters / 1000;
+//       final durMin = route.durationSeconds / 60;
+//       _tripSheetKey.currentState?.updateRouteInfo(
+//         distanceKm: distKm,
+//         durationMin: durMin,
+//       );
+//     } catch (e) {
+//       if (!mounted) return;
+//       setState(() => _loadingRoute = false);
+//       _showError('فشل في جلب المسار');
+//     }
+//   }
+
+//   // ══ MINI CARD TAP → ROUTE ═════════════════════════════════════════════════
+//   Future<void> _goToSaved(SavedLocation loc) async {
+//     final point = LatLng(loc.lat, loc.lng);
+//     if (_myLocation == null) {
+//       _mapCtrl.move(point, 15);
+//       return;
+//     }
+//     setState(() {
+//       _destination = point;
+//       _route = null;
+//       _loadingRoute = true;
+//       _markers = [];
+//     });
+//     try {
+//       final route = await RoutingService.getRoute(
+//         origin: _myLocation!,
+//         destination: point,
+//       );
+//       if (!mounted) return;
+//       setState(() {
+//         _route = route;
+//         _loadingRoute = false;
+//       });
+//       _mapCtrl.fitCamera(
+//         CameraFit.bounds(
+//           bounds: LatLngBounds.fromPoints(route.points),
+//           padding: const EdgeInsets.all(60),
+//         ),
+//       );
+//     } catch (e) {
+//       if (!mounted) return;
+//       setState(() => _loadingRoute = false);
+//       _showError('Route failed: ${e.toString()}');
+//     }
+//   }
+
+//   // ══ OPEN ADD LOCATION SHEET ═══════════════════════════════════════════════
+//   void _openAddSheet() {
+//     showModalBottomSheet(
+//       context: context,
+//       isScrollControlled: true,
+//       shape: const RoundedRectangleBorder(
+//         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+//       ),
+//       builder: (_) => AddLocationSheet(service: _savedService),
+//     );
+//   }
+
+//   void _clearRoute() {
+//     setState(() {
+//       _destination = null;
+//       _route = null;
+//       _markers = [];
+//     });
+//     _tripSheetKey.currentState?.clearRoute();
+//     if (_myLocation != null) _mapCtrl.move(_myLocation!, 15);
+//   }
+
+//   void _showError(String msg) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(msg),
+//         backgroundColor: Colors.red[400],
+//         behavior: SnackBarBehavior.floating,
+//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+//       ),
+//     );
+//   }
+
+//   // ══ BUILD ════════════════════════════════════════════════════════════════
+//   @override
+//   Widget build(BuildContext context) {
+//     final bottomPad = MediaQuery.of(context).padding.bottom;
+//     final topPad = MediaQuery.of(context).padding.top;
+//     final colors = Theme.of(context).colorScheme;
+
+//     return Scaffold(
+//       key: _scaffoldKey,
+//       body: Stack(
+//         children: [
+//           // ══ MAP ══════════════════════════════════════
+//           FlutterMap(
+//             mapController: _mapCtrl,
+//             options: MapOptions(
+//               initialCenter: const LatLng(30.0444, 31.2357),
+//               initialZoom: 12,
+//               minZoom: 5,
+//               maxZoom: 19,
+//               onTap: _onMapTap,
+//             ),
+//             children: [
+//               BlocListener<ThemeCubit, ThemeState>(
+//                 listener: (context, state) {
+//                   if (state.themeMode == ThemeMode.light) {
+//                     setState(() {
+//                       _tileUrl =
+//                           'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+//                     });
+//                   } else {
+//                     _tileUrl =
+//                         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+//                   }
+//                 },
+//                 child: TileLayer(
+//                   urlTemplate: _tileUrl,
+//                   subdomains: const ['a', 'b', 'c', 'd'],
+//                   userAgentPackageName: 'com.example.drift',
+//                   maxZoom: 19,
+//                 ),
+//               ),
+//               if (_route != null)
+//                 PolylineLayer(
+//                   polylines: [
+//                     Polyline(
+//                       points: _route!.points,
+//                       strokeWidth: 8,
+//                       color: colors.primary,
+//                       borderStrokeWidth: 2,
+//                       borderColor: Colors.white.withOpacity(0.6),
+//                     ),
+//                   ],
+//                 ),
+//               MarkerLayer(
+//                 markers: [
+//                   if (_myLocation != null)
+//                     Marker(
+//                       point: _myLocation!,
+//                       width: 44,
+//                       height: 44,
+//                       child: const UserLocationMarker(),
+//                     ),
+//                   if (_destination != null)
+//                     Marker(
+//                       point: _destination!,
+//                       width: 44,
+//                       height: 44,
+//                       child: const DestinationMarker(),
+//                     ),
+//                   ..._markers,
+//                 ],
+//               ),
+//             ],
+//           ),
+
+//           // ══ GPS LOADING ══════════════════════════════
+//           if (_loadingGPS)
+//             ColoredBox(
+//               color: Colors.black,
+//               child: Center(
+//                 child: Column(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     CircularProgressIndicator(color: colors.primary),
+//                     const SizedBox(height: 14),
+//                     Text(
+//                       'جاري تحديد موقعك...',
+//                       style: TextStyle(fontSize: 15, color: colors.onSurface),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+
+//           // ══ SEARCH BAR + MINI CARDS ═══════════════════
+//           Positioned(
+//             top: topPad + 10,
+//             left: 16,
+//             right: 16,
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Row(
+//                   children: [
+//                     Expanded(
+//                       child: CustomTextField(
+//                         controller: _searchController,
+//                         hintText: 'Search City...',
+//                         hintSize: 18,
+//                         fillColor: colors.background,
+//                         suffixIcon: IconButton(
+//                           icon: Padding(
+//                             padding: const EdgeInsets.only(right: 10),
+//                             child: Icon(Icons.search, color: colors.onSurface),
+//                           ),
+//                           onPressed: () => _search(),
+//                         ),
+//                         onSubmitted: (context) => _search(),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Container(
+//                       padding: const EdgeInsets.all(3),
+//                       decoration: BoxDecoration(
+//                         border: Border.all(
+//                           // ← fixed (was BoxBorder.all)
+//                           color: colors.onSurface.withOpacity(0.6),
+//                           width: 2,
+//                         ),
+//                         shape: BoxShape.circle,
+//                         color: colors.background,
+//                       ),
+//                       child: IconButton(
+//                         onPressed: () {
+//                           _scaffoldKey.currentState?.openEndDrawer();
+//                         },
+//                         icon: Icon(Icons.menu_rounded, color: colors.onSurface),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//                 const SizedBox(height: 10),
+
+//                 // ── Mini Cards (Firebase real-time) ──────────────────────────
+//                 StreamBuilder<List<SavedLocation>>(
+//                   stream: _savedService.stream(),
+//                   builder: (context, snapshot) {
+//                     final locations = snapshot.data ?? [];
+//                     if (locations.isEmpty) return const SizedBox.shrink();
+//                     return SizedBox(
+//                       height: 50,
+//                       child: ListView.separated(
+//                         scrollDirection: Axis.horizontal,
+//                         itemCount: locations.length,
+//                         separatorBuilder: (_, __) => const SizedBox(width: 8),
+//                         itemBuilder: (_, i) => MiniCard(
+//                           label: locations[i].name,
+//                           onTap: () => _goToSaved(locations[i]),
+//                         ),
+//                       ),
+//                     );
+//                   },
+//                 ),
+//               ],
+//             ),
+//           ),
+
+//           // ══ MAP STYLE BUTTONS ════════════════════════
+//           Positioned(
+//             bottom: 200, // raised to sit above the bottom sheet
+//             right: 16,
+//             child: Column(
+//               children: [
+//                 FabBtn(
+//                   icon: Icons.light_mode,
+//                   color: colors.onSurface,
+//                   onTap: () => setState(
+//                     () => _tileUrl =
+//                         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+//                   ),
+//                 ),
+//                 const SizedBox(height: 8),
+//                 FabBtn(
+//                   icon: Icons.dark_mode,
+//                   color: colors.onSurface,
+//                   onTap: () => setState(
+//                     () => _tileUrl =
+//                         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+//                   ),
+//                 ),
+//                 const SizedBox(height: 8),
+//                 FabBtn(
+//                   icon: Icons.my_location_rounded,
+//                   color: colors.onSurface,
+//                   onTap: () {
+//                     if (_myLocation != null) _mapCtrl.move(_myLocation!, 16);
+//                   },
+//                 ),
+//                 const SizedBox(height: 8),
+//                 FabBtn(
+//                   icon: Icons.add_location_alt_rounded,
+//                   color: colors.onSurface,
+//                   onTap: _openAddSheet,
+//                 ),
+//                 if (_destination != null) ...[
+//                   const SizedBox(height: 8),
+//                   FabBtn(
+//                     icon: Icons.clear_rounded,
+//                     color: Colors.red,
+//                     onTap: _clearRoute,
+//                   ),
+//                 ],
+//               ],
+//             ),
+//           ),
+
+//           // ══ ROUTE LOADING ════════════════════════════
+//           if (_loadingRoute)
+//             Positioned(
+//               bottom: bottomPad + 180,
+//               left: 0,
+//               right: 0,
+//               child: const Center(child: LoadingPill()),
+//             ),
+
+//           // ══ TRIP BOTTOM SHEET ════════════════════════
+//           // Replaces the old GlassCont and RouteInfoSheet
+//           Positioned.fill(
+//             child: TripBottomSheet(
+//               key: _tripSheetKey,
+//               myLocation: _myLocation,
+//               onDestinationSelected: _onTripDestinationSelected,
+//               onClear: () {
+//                 setState(() {
+//                   _destination = null;
+//                   _route = null;
+//                   _markers = [];
+//                 });
+//                 if (_myLocation != null) _mapCtrl.move(_myLocation!, 15);
+//               },
+//             ),
+//           ),
+//         ],
+//       ),
+//       endDrawer: CustomDrawer(),
+//     );
+//   }
+// }
+//==========================================================================================
+
+// import 'package:drift_app/classes/mode_info.dart';
+// import 'package:drift_app/widgets/price_arrow.dart';
+// import 'package:flutter/material.dart';
+
+// class PriceEditor extends StatelessWidget {
+//   final double price;
+//   final double basePriceKm;
+//   final void Function() onTapPluse;
+//   final void Function() onTapminse;
+//   final ModeInfo mode;
+//   const PriceEditor(
+//       {super.key,
+//       required this.price,
+//       required this.basePriceKm,
+//       required this.onTapPluse,
+//       required this.onTapminse,
+//       required this.mode});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final colors = Theme.of(context).colorScheme;
+//     return Container(
+//       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+//       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+//       decoration: BoxDecoration(
+//         color: colors.surfaceVariant.withOpacity(0.4),
+//         borderRadius: BorderRadius.circular(18),
+//         border: Border.all(color: colors.onSurface.withOpacity(0.1)),
+//       ),
+//       child: Row(
+//         children: [
+//           Expanded(
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Text(
+//                   'Offer Price',
+//                   style: TextStyle(
+//                     color: colors.onSurface.withOpacity(0.5),
+//                     fontSize: 11,
+//                     fontWeight: FontWeight.w500,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 2),
+//                 Text(
+//                   'EGP ${price.toStringAsFixed(0)}',
+//                   style: TextStyle(
+//                     color: colors.onSurface,
+//                     fontSize: 26,
+//                     fontWeight: FontWeight.w800,
+//                     letterSpacing: -0.5,
+//                   ),
+//                 ),
+//                 Text(
+//                   '${basePriceKm.toStringAsFixed(1)} EGP/km  •  tap ↑↓ to adjust',
+//                   style: TextStyle(
+//                     color: colors.onSurface.withOpacity(0.35),
+//                     fontSize: 10,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//           Column(
+//             children: [
+//               PriceArrowBtn(
+//                 icon: Icons.keyboard_arrow_up_rounded,
+//                 color: mode.color,
+//                 onTap: onTapPluse,
+//               ),
+//               const SizedBox(height: 6),
+//               PriceArrowBtn(
+//                 icon: Icons.keyboard_arrow_down_rounded,
+//                 color: Colors.redAccent,
+//                 onTap: onTapminse,
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+//============================================================================================
+// // ignore_for_file: deprecated_member_use
+// import 'dart:async';
+// import 'dart:convert';
+// import 'package:drift_app/classes/mode_info.dart';
+// import 'package:drift_app/classes/place_suggestion.dart';
+// import 'package:drift_app/widgets/build_handle.dart';
+// import 'package:drift_app/widgets/custom_search_bar.dart';
+// import 'package:drift_app/widgets/glass_cont.dart';
+// import 'package:drift_app/widgets/mode_tabs.dart';
+// import 'package:drift_app/widgets/price_editor.dart';
+// import 'package:drift_app/widgets/route_info.dart';
+// import 'package:drift_app/widgets/start_button.dart';
+// import 'package:drift_app/widgets/suggestions.dart';
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:latlong2/latlong.dart';
+
+// enum TripMode { ride, cityToCity, delivery, takeMeOut }
+
+// enum TripState { idle, searchingDriver, driverFound }
+
+// class TripBottomSheet extends StatefulWidget {
+//   final LatLng? myLocation;
+//   final Function(LatLng destination, String cityName) onDestinationSelected;
+//   final VoidCallback onClear;
+
+//   const TripBottomSheet({
+//     super.key,
+//     required this.myLocation,
+//     required this.onDestinationSelected,
+//     required this.onClear,
+//   });
+
+//   @override
+//   State<TripBottomSheet> createState() => TripBottomSheetState();
+// }
+
+// class TripBottomSheetState extends State<TripBottomSheet>
+//     with TickerProviderStateMixin {
+//   TripMode selectedMode = TripMode.ride;
+//   TripState tripState = TripState.idle;
+
+//   final TextEditingController citySearchController = TextEditingController();
+//   List<PlaceSuggestion> suggestions = [];
+//   bool loadingSearch = false;
+//   bool _showSuggestions = false;
+//   Timer? _debounce;
+
+//   // Route info
+//   String? selectedCity;
+//   double price = 0;
+//   double basePriceKm = 3.5; // EGP per km
+//   double? routeDistanceKm;
+//   double? routeDurationMin;
+//   bool _hasRoute = false;
+
+//   // Driver search
+//   // ignore: unused_field
+//   int _driversFound = 0;
+//   Timer? _driverSearchTimer;
+//   late AnimationController pulseController;
+//   late AnimationController _slideController;
+//   late Animation<double> _slideAnimation;
+
+//   final DraggableScrollableController _sheetController =
+//       DraggableScrollableController();
+
+//   static const Map<TripMode, ModeInfo> modeInfo = {
+//     TripMode.ride: ModeInfo(
+//       icon: Icons.directions_car_rounded,
+//       label: 'Ride',
+//       color: Color(0xFF6C63FF),
+//     ),
+//     TripMode.cityToCity: ModeInfo(
+//       icon: Icons.route_rounded,
+//       label: 'City to City',
+//       color: Color(0xFF00C9A7),
+//     ),
+//     TripMode.delivery: ModeInfo(
+//       icon: Icons.delivery_dining_rounded,
+//       label: 'Delivery',
+//       color: Color(0xFFFF6B6B),
+//     ),
+//     TripMode.takeMeOut: ModeInfo(
+//       icon: Icons.explore_rounded,
+//       label: 'Take Me Out',
+//       color: Color(0xFFFFBE0B),
+//     ),
+//   };
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     pulseController = AnimationController(
+//       vsync: this,
+//       duration: const Duration(milliseconds: 900),
+//     )..repeat(reverse: true);
+
+//     _slideController = AnimationController(
+//       vsync: this,
+//       duration: const Duration(milliseconds: 400),
+//     );
+//     _slideAnimation = CurvedAnimation(
+//       parent: _slideController,
+//       curve: Curves.easeOutCubic,
+//     );
+//   }
+
+//   @override
+//   void dispose() {
+//     _debounce?.cancel();
+//     _driverSearchTimer?.cancel();
+//     pulseController.dispose();
+//     _slideController.dispose();
+//     citySearchController.dispose();
+//     super.dispose();
+//   }
+
+//   // ══ SEARCH ════════════════════════════════════════════════════════════════
+//   onSearchChanged(String value) {
+//     _debounce?.cancel();
+
+//     if (value.trim().isEmpty) {
+//       clearRoute();
+//       return;
+//     }
+//     _debounce = Timer(const Duration(milliseconds: 450), () {
+//       _fetchSuggestions(value.trim());
+//     });
+//   }
+
+//   Future<void> _fetchSuggestions(String query) async {
+//     setState(() => loadingSearch = true);
+//     try {
+//       final url = Uri.parse(
+//         'https://nominatim.openstreetmap.org/search'
+//         '?q=${Uri.encodeComponent(query)}&format=json&limit=5&addressdetails=1',
+//       );
+//       final res = await http.get(url, headers: {'User-Agent': 'DriftApp/1.0'});
+//       final data = jsonDecode(res.body) as List;
+//       setState(() {
+//         suggestions = data
+//             .map(
+//               (e) => PlaceSuggestion(
+//                 displayName: e['display_name'] ?? '',
+//                 shortName: _shortName(e),
+//                 lat: double.parse(e['lat']),
+//                 lon: double.parse(e['lon']),
+//               ),
+//             )
+//             .toList();
+//         _showSuggestions = true;
+//         loadingSearch = false;
+//       });
+//     } catch (_) {
+//       setState(() => loadingSearch = false);
+//     }
+//   }
+
+//   String _shortName(Map e) {
+//     final addr = e['address'] as Map? ?? {};
+//     return addr['city'] ??
+//         addr['town'] ??
+//         addr['village'] ??
+//         addr['county'] ??
+//         e['display_name']?.toString().split(',').first ??
+//         '';
+//   }
+
+//   void selectPlace(PlaceSuggestion place) {
+//     setState(() {
+//       selectedCity = place.shortName;
+//       citySearchController.text = place.shortName;
+//       _showSuggestions = false;
+//       suggestions = [];
+//     });
+//     widget.onDestinationSelected(LatLng(place.lat, place.lon), place.shortName);
+//     _expandSheet();
+//   }
+
+//   void _expandSheet() {
+//     _sheetController.animateTo(
+//       0.55,
+//       duration: const Duration(milliseconds: 350),
+//       curve: Curves.easeOutCubic,
+//     );
+//   }
+
+//   // ══ ROUTE & PRICE ════════════════════════════════════════════════════════
+//   void updateRouteInfo({
+//     required double distanceKm,
+//     required double durationMin,
+//   }) {
+//     final base = switch (selectedMode) {
+//       TripMode.ride => 3.5,
+//       TripMode.cityToCity => 5.0,
+//       TripMode.delivery => 4.0,
+//       TripMode.takeMeOut => 6.0,
+//     };
+//     setState(() {
+//       routeDistanceKm = distanceKm;
+//       routeDurationMin = durationMin;
+//       basePriceKm = base;
+//       price = (distanceKm * base).clamp(25, 9999);
+//       _hasRoute = true;
+//     });
+//     _slideController.forward(from: 0);
+//   }
+
+//   void clearRoute() {
+//     setState(() {
+//       _hasRoute = false;
+//       selectedCity = null;
+//       citySearchController.clear();
+//       tripState = TripState.idle;
+//       _driversFound = 0;
+//       price = 0;
+//     });
+//     _slideController.reverse();
+//     _driverSearchTimer?.cancel();
+//     widget.onClear();
+//   }
+
+//   // ══ PRICE EDIT ═══════════════════════════════════════════════════════════
+//   void adjustPrice(double delta) {
+//     setState(() {
+//       price = (price + delta).clamp(20, 9999);
+//     });
+//   }
+
+//   // ══ START TRIP ═══════════════════════════════════════════════════════════
+//   void startTrip() {
+//     setState(() {
+//       tripState = TripState.searchingDriver;
+//       _driversFound = 0;
+//     });
+//     _expandSheet();
+
+//     // Simulate finding drivers progressively
+//     int elapsed = 0;
+//     _driverSearchTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+//       elapsed += 2;
+//       if (!mounted) {
+//         t.cancel();
+//         return;
+//       }
+
+//       // Randomly find a driver between 4–14 seconds
+//       if (elapsed >= 4 && (elapsed >= 14 || _randomBool(elapsed))) {
+//         t.cancel();
+//         setState(() {
+//           tripState = TripState.driverFound;
+//           _driversFound = 5;
+//         });
+//       }
+//     });
+//   }
+
+//   bool _randomBool(int elapsed) {
+//     // Probability increases with time
+//     final chance = (elapsed - 2) / 14.0;
+//     return (DateTime.now().millisecondsSinceEpoch % 100) / 100.0 < chance;
+//   }
+
+//   void cancelSearch() {
+//     _driverSearchTimer?.cancel();
+//     setState(() {
+//       tripState = TripState.idle;
+//       _driversFound = 0;
+//     });
+//   }
+
+//   // ══ BUILD ════════════════════════════════════════════════════════════════
+//   @override
+//   Widget build(BuildContext context) {
+//     final colors = Theme.of(context).colorScheme;
+
+//     return DraggableScrollableSheet(
+//       controller: _sheetController,
+//       initialChildSize: 0.22,
+//       minChildSize: 0.14,
+//       maxChildSize: 0.82,
+//       snap: true,
+//       snapSizes: const [0.22, 0.45, 0.82],
+//       builder: (context, scrollController) {
+//         return GlassCont(
+//           top: BorderSide(color: colors.onSurface.withOpacity(0.3), width: 1),
+//           right: BorderSide(color: colors.onSurface.withOpacity(0.3), width: 1),
+//           left: BorderSide(color: colors.onSurface.withOpacity(0.3), width: 1),
+//           padding: const EdgeInsets.symmetric(horizontal: 0),
+//           child: ListView(
+//             controller: scrollController,
+//             padding: EdgeInsets.zero,
+//             children: [
+//               const BuildHandle(),
+//               ModeTabs(
+//                 modeInfo: modeInfo,
+//                 selectedMode: selectedMode,
+//                 onTap: (mode) {
+//                   setState(() {
+//                     selectedMode = mode;
+//                   });
+
+//                   if (_hasRoute &&
+//                       routeDistanceKm != null &&
+//                       routeDurationMin != null) {
+//                     updateRouteInfo(
+//                       distanceKm: routeDistanceKm!,
+//                       durationMin: routeDurationMin!,
+//                     );
+//                   }
+//                 },
+//               ),
+//               const SizedBox(height: 12),
+//               CustomSearchBar(
+//                 citySearchController: citySearchController,
+//                 loadingSearch: loadingSearch,
+//                 hintText: hintText,
+//                 selectedCity: selectedCity,
+//                 onChanged: onSearchChanged,
+//                 onPressed: clearRoute,
+//               ),
+//               if (_showSuggestions)
+//                 Suggestions(
+//                   suggestions: suggestions,
+//                   onTap: selectPlace,
+//                 ),
+//               if (_hasRoute && !_showSuggestions) ...[
+//                 SlideTransition(
+//                   position: Tween<Offset>(
+//                     begin: const Offset(0, 0.3),
+//                     end: Offset.zero,
+//                   ).animate(_slideAnimation),
+//                   child: FadeTransition(
+//                     opacity: _slideAnimation,
+//                     child: Column(
+//                       children: [
+//                         RouteInfo(
+//                             mode: modeInfo[selectedMode]!,
+//                             selectedCity: selectedCity,
+//                             routeDistanceKm: routeDistanceKm,
+//                             routeDurationMin: routeDurationMin),
+//                         PriceEditor(
+//                             price: price,
+//                             basePriceKm: basePriceKm,
+//                             onTapPluse: () => adjustPrice(5),
+//                             onTapminse: () => adjustPrice(-5),
+//                             mode: modeInfo[selectedMode]!),
+//                         StartButton(
+//                           tripState: tripState,
+//                           modeInfo: modeInfo,
+//                           selectedMode: selectedMode,
+//                           pulseController: pulseController,
+//                           price: price,
+//                           onTapSearchinDriver: cancelSearch,
+//                           onTapDriverFound: clearRoute,
+//                           onTapStrartTrip: startTrip,
+//                           mode: modeInfo[selectedMode]!,
+//                         ),
+//                         const SizedBox(height: 24),
+//                       ],
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ],
+//           ),
+//         );
+//       },
+//     );
+//   }
+
+//   String get hintText {
+//     return switch (selectedMode) {
+//       TripMode.ride => 'Where to?',
+//       TripMode.cityToCity => 'Destination city...',
+//       TripMode.delivery => 'Delivery address...',
+//       TripMode.takeMeOut => 'Surprise me... or pick a city',
+//     };
+//   }
+// }
+
+
+

@@ -1,14 +1,16 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:convert';
+import 'package:drift_app/classes/place_suggestion.dart';
 import 'package:drift_app/cubits/theme_cubit/theme_cubit.dart';
 import 'package:drift_app/cubits/theme_cubit/theme_state.dart';
 import 'package:drift_app/services/saved_locations_service_firebase.dart';
 import 'package:drift_app/widgets/custom_drawer.dart';
-import 'package:drift_app/widgets/custom_text_field.dart';
+import 'package:drift_app/widgets/custom_search_bar.dart';
 import 'package:drift_app/widgets/fab_btn.dart';
 import 'package:drift_app/widgets/loading_pill.dart';
 import 'package:drift_app/widgets/mini_cards.dart';
+import 'package:drift_app/widgets/suggestions.dart';
 import 'package:drift_app/widgets/trip_bottom_sheet.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -42,20 +44,25 @@ class _MapPageState extends State<MapPage> {
   bool _loadingGPS = true;
   bool _loadingRoute = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
   final GlobalKey<TripBottomSheetState> _tripSheetKey =
       GlobalKey<TripBottomSheetState>();
 
   StreamSubscription? _gpsSub;
+
+  // ── Top-bar live search state ────────────────────────────────────────────
   final TextEditingController _searchController = TextEditingController();
+  List<PlaceSuggestion> _searchSuggestions = [];
+  bool _searchLoading = false;
+  bool _showSearchSuggestions = false;
+  String? _searchSelectedCity; // keeps the clear "×" button visible
+  Timer? _searchDebounce;
+
   List<Marker> _markers = [];
-  late String mapMode;
   String _tileUrl =
       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
 
-  late final SavedLocationService _savedService = SavedLocationService(
-    userId: MapPage.userId,
-  );
+  late final SavedLocationService _savedService =
+      SavedLocationService(userId: MapPage.userId);
 
   @override
   void initState() {
@@ -65,6 +72,7 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _gpsSub?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -94,38 +102,94 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // ══ SEARCH (top bar) ══════════════════════════════════════════════════════
-  Future<LatLng?> searchPlace(String query) async {
-    final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/search'
-      '?q=${Uri.encodeComponent(query)}&format=json&limit=1',
-    );
-    final response = await http.get(
-      url,
-      headers: {'User-Agent': 'MyFlutterApp/1.0'},
-    );
-    final data = jsonDecode(response.body) as List;
-    if (data.isEmpty) return null;
-    return LatLng(double.parse(data[0]['lat']), double.parse(data[0]['lon']));
+  // ══ TOP-BAR SEARCH — same logic as TripBottomSheet ════════════════════════
+
+  /// Called on every keystroke in the top search bar.
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    if (value.trim().length < 2) {
+      setState(() {
+        _searchSuggestions = [];
+        _showSearchSuggestions = false;
+      });
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
+      _fetchSearchSuggestions(value.trim());
+    });
   }
 
-  Future<void> _search() async {
-    final result = await searchPlace(_searchController.text);
-    if (result == null) return;
+  Future<void> _fetchSearchSuggestions(String query) async {
+    setState(() => _searchLoading = true);
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=${Uri.encodeComponent(query)}&format=json&limit=5&addressdetails=1',
+      );
+      final res = await http.get(url, headers: {'User-Agent': 'DriftApp/1.0'});
+      final data = jsonDecode(res.body) as List;
+      if (!mounted) return;
+      setState(() {
+        _searchSuggestions = data.map((e) {
+          final addr = e['address'] as Map? ?? {};
+          final shortName = addr['city'] ??
+              addr['town'] ??
+              addr['village'] ??
+              addr['county'] ??
+              (e['display_name'] as String?)?.split(',').first ??
+              '';
+          return PlaceSuggestion(
+            displayName: e['display_name'] ?? '',
+            shortName: shortName,
+            lat: double.parse(e['lat']),
+            lon: double.parse(e['lon']),
+          );
+        }).toList();
+        _showSearchSuggestions = true;
+        _searchLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _searchLoading = false);
+    }
+  }
+
+  /// User tapped a suggestion in the top-bar dropdown.
+  void _onSearchSuggestionSelected(PlaceSuggestion place) {
     setState(() {
+      _searchSelectedCity = place.shortName;
+      _searchController.text = place.shortName;
+      _showSearchSuggestions = false;
+      _searchSuggestions = [];
       _markers = [
         Marker(
-          point: result,
-          child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+          point: LatLng(place.lat, place.lon),
+          width: 44,
+          height: 44,
+          child: const DestinationMarker(),
         ),
       ];
     });
-    _mapCtrl.move(result, 15);
+    _mapCtrl.move(LatLng(place.lat, place.lon), 14);
+  }
+
+  /// Clear button pressed on top-bar search.
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchSelectedCity = null;
+      _searchSuggestions = [];
+      _showSearchSuggestions = false;
+      _markers = [];
+    });
   }
 
   // ══ MAP TAP → ROUTE ═══════════════════════════════════════════════════════
   Future<void> _onMapTap(TapPosition _, LatLng point) async {
     if (_loadingRoute || _myLocation == null) return;
+    // Hide top-bar suggestions when user taps the map
+    setState(() {
+      _showSearchSuggestions = false;
+    });
     setState(() {
       _destination = point;
       _route = null;
@@ -147,13 +211,9 @@ class _MapPageState extends State<MapPage> {
           padding: const EdgeInsets.all(60),
         ),
       );
-
-      // 👇 Notify the trip sheet about the new route
-      final distKm = route.distanceMeters / 1000;
-      final durMin = route.durationSeconds / 60;
       _tripSheetKey.currentState?.updateRouteInfo(
-        distanceKm: distKm,
-        durationMin: durMin,
+        distanceKm: route.distanceMeters / 1000,
+        durationMin: route.durationSeconds / 60,
       );
     } catch (e) {
       if (!mounted) return;
@@ -190,13 +250,9 @@ class _MapPageState extends State<MapPage> {
           padding: const EdgeInsets.all(60),
         ),
       );
-
-      // Update trip sheet with route info
-      final distKm = route.distanceMeters / 1000;
-      final durMin = route.durationSeconds / 60;
       _tripSheetKey.currentState?.updateRouteInfo(
-        distanceKm: distKm,
-        durationMin: durMin,
+        distanceKm: route.distanceMeters / 1000,
+        durationMin: route.durationSeconds / 60,
       );
     } catch (e) {
       if (!mounted) return;
@@ -241,7 +297,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // ══ OPEN ADD LOCATION SHEET ═══════════════════════════════════════════════
+  // ══ ADD LOCATION SHEET ════════════════════════════════════════════════════
   void _openAddSheet() {
     showModalBottomSheet(
       context: context,
@@ -298,15 +354,11 @@ class _MapPageState extends State<MapPage> {
             children: [
               BlocListener<ThemeCubit, ThemeState>(
                 listener: (context, state) {
-                  if (state.themeMode == ThemeMode.light) {
-                    setState(() {
-                      _tileUrl =
-                          'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
-                    });
-                  } else {
-                    _tileUrl =
-                        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-                  }
+                  setState(() {
+                    _tileUrl = state.themeMode == ThemeMode.light
+                        ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
+                        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+                  });
                 },
                 child: TileLayer(
                   urlTemplate: _tileUrl,
@@ -368,7 +420,7 @@ class _MapPageState extends State<MapPage> {
               ),
             ),
 
-          // ══ SEARCH BAR + MINI CARDS ═══════════════════
+          // ══ TOP SEARCH BAR + SUGGESTIONS + MINI CARDS ═════════════════════
           Positioned(
             top: topPad + 10,
             left: 16,
@@ -376,22 +428,18 @@ class _MapPageState extends State<MapPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Search row ────────────────────────────────────────────
                 Row(
                   children: [
                     Expanded(
-                      child: CustomTextField(
-                        controller: _searchController,
-                        hintText: 'Search City...',
-                        hintSize: 18,
-                        fillColor: colors.background,
-                        suffixIcon: IconButton(
-                          icon: Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: Icon(Icons.search, color: colors.onSurface),
-                          ),
-                          onPressed: () => _search(),
-                        ),
-                        onSubmitted: (context) => _search(),
+                      // ✅ Same CustomSearchBar widget used in TripBottomSheet
+                      child: CustomSearchBar(
+                        citySearchController: _searchController,
+                        loadingSearch: _searchLoading,
+                        hintText: 'Search city or place...',
+                        selectedCity: _searchSelectedCity,
+                        onChanged: _onSearchChanged,
+                        onPressed: _clearSearch,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -399,7 +447,6 @@ class _MapPageState extends State<MapPage> {
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          // ← fixed (was BoxBorder.all)
                           color: colors.onSurface.withOpacity(0.6),
                           width: 2,
                         ),
@@ -407,62 +454,67 @@ class _MapPageState extends State<MapPage> {
                         color: colors.background,
                       ),
                       child: IconButton(
-                        onPressed: () {
-                          _scaffoldKey.currentState?.openEndDrawer();
-                        },
+                        onPressed: () =>
+                            _scaffoldKey.currentState?.openEndDrawer(),
                         icon: Icon(Icons.menu_rounded, color: colors.onSurface),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
 
-                // ── Mini Cards (Firebase real-time) ──────────────────────────
-                StreamBuilder<List<SavedLocation>>(
-                  stream: _savedService.stream(),
-                  builder: (context, snapshot) {
-                    final locations = snapshot.data ?? [];
-                    if (locations.isEmpty) return const SizedBox.shrink();
-                    return SizedBox(
-                      height: 50,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: locations.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) => MiniCard(
-                          label: locations[i].name,
-                          onTap: () => _goToSaved(locations[i]),
+                // ── Live suggestions dropdown ──────────────────────────────
+                // ✅ Same Suggestions widget used in TripBottomSheet
+                if (_showSearchSuggestions && _searchSuggestions.isNotEmpty)
+                  Suggestions(
+                    suggestions: _searchSuggestions,
+                    onTap: _onSearchSuggestionSelected,
+                  ),
+
+                // ── Mini Cards ─────────────────────────────────────────────
+                if (!_showSearchSuggestions) ...[
+                  const SizedBox(height: 10),
+                  StreamBuilder<List<SavedLocation>>(
+                    stream: _savedService.stream(),
+                    builder: (context, snapshot) {
+                      final locations = snapshot.data ?? [];
+                      if (locations.isEmpty) return const SizedBox.shrink();
+                      return SizedBox(
+                        height: 50,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: locations.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (_, i) => MiniCard(
+                            label: locations[i].name,
+                            onTap: () => _goToSaved(locations[i]),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),
 
-          // ══ MAP STYLE BUTTONS ════════════════════════
+          // ══ MAP STYLE + ACTION BUTTONS ════════════════════════════════════
           Positioned(
-            bottom: 200, // raised to sit above the bottom sheet
+            bottom: 200,
             right: 16,
             child: Column(
               children: [
                 FabBtn(
                   icon: Icons.light_mode,
                   color: colors.onSurface,
-                  onTap: () => setState(
-                    () => _tileUrl =
-                        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                  ),
+                  onTap: () => setState(() => _tileUrl =
+                      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'),
                 ),
                 const SizedBox(height: 8),
                 FabBtn(
                   icon: Icons.dark_mode,
                   color: colors.onSurface,
-                  onTap: () => setState(
-                    () => _tileUrl =
-                        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                  ),
+                  onTap: () => setState(() => _tileUrl =
+                      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'),
                 ),
                 const SizedBox(height: 8),
                 FabBtn(
@@ -500,7 +552,6 @@ class _MapPageState extends State<MapPage> {
             ),
 
           // ══ TRIP BOTTOM SHEET ════════════════════════
-          // Replaces the old GlassCont and RouteInfoSheet
           Positioned.fill(
             child: TripBottomSheet(
               key: _tripSheetKey,

@@ -46,15 +46,13 @@ class TripBottomSheetState extends State<TripBottomSheet>
   bool _showSuggestions = false;
   Timer? _debounce;
 
-  // Route info
   String? selectedCity;
   double price = 0;
-  double basePriceKm = 3.5; // EGP per km
+  double basePriceKm = 3.5;
   double? routeDistanceKm;
   double? routeDurationMin;
   bool _hasRoute = false;
 
-  // Driver search
   // ignore: unused_field
   int _driversFound = 0;
   Timer? _driverSearchTimer;
@@ -117,11 +115,13 @@ class TripBottomSheetState extends State<TripBottomSheet>
   }
 
   // ══ SEARCH ════════════════════════════════════════════════════════════════
-  onSearchChanged(String value) {
+  void onSearchChanged(String value) {
     _debounce?.cancel();
-
-    if (value.trim().isEmpty) {
-      clearRoute();
+    if (value.trim().length < 2) {
+      setState(() {
+        suggestions = [];
+        _showSuggestions = false;
+      });
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 450), () {
@@ -187,16 +187,8 @@ class TripBottomSheetState extends State<TripBottomSheet>
   }
 
   // ══ ROUTE & PRICE ════════════════════════════════════════════════════════
-  void updateRouteInfo({
-    required double distanceKm,
-    required double durationMin,
-  }) {
-    final base = switch (selectedMode) {
-      TripMode.ride => 3.5,
-      TripMode.cityToCity => 5.0,
-      TripMode.delivery => 4.0,
-      TripMode.takeMeOut => 6.0,
-    };
+  void updateRouteInfo({required double distanceKm, required double durationMin}) {
+    final base = _basePriceForMode(selectedMode);
     setState(() {
       routeDistanceKm = distanceKm;
       routeDurationMin = durationMin;
@@ -206,6 +198,13 @@ class TripBottomSheetState extends State<TripBottomSheet>
     });
     _slideController.forward(from: 0);
   }
+
+  double _basePriceForMode(TripMode mode) => switch (mode) {
+        TripMode.ride => 3.5,
+        TripMode.cityToCity => 5.0,
+        TripMode.delivery => 4.0,
+        TripMode.takeMeOut => 6.0,
+      };
 
   void clearRoute() {
     setState(() {
@@ -221,14 +220,13 @@ class TripBottomSheetState extends State<TripBottomSheet>
     widget.onClear();
   }
 
-  // ══ PRICE EDIT ═══════════════════════════════════════════════════════════
+  // ══ PRICE — blocked while searching for driver ════════════════════════════
   void adjustPrice(double delta) {
-    setState(() {
-      price = (price + delta).clamp(20, 9999);
-    });
+    if (tripState != TripState.idle) return; // 🔒 locked
+    setState(() => price = (price + delta).clamp(30, 9999));
   }
 
-  // ══ START TRIP ═══════════════════════════════════════════════════════════
+  // ══ TRIP ══════════════════════════════════════════════════════════════════
   void startTrip() {
     setState(() {
       tripState = TripState.searchingDriver;
@@ -236,16 +234,10 @@ class TripBottomSheetState extends State<TripBottomSheet>
     });
     _expandSheet();
 
-    // Simulate finding drivers progressively
     int elapsed = 0;
     _driverSearchTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       elapsed += 2;
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-
-      // Randomly find a driver between 4–14 seconds
+      if (!mounted) { t.cancel(); return; }
       if (elapsed >= 4 && (elapsed >= 14 || _randomBool(elapsed))) {
         t.cancel();
         setState(() {
@@ -257,7 +249,6 @@ class TripBottomSheetState extends State<TripBottomSheet>
   }
 
   bool _randomBool(int elapsed) {
-    // Probability increases with time
     final chance = (elapsed - 2) / 14.0;
     return (DateTime.now().millisecondsSinceEpoch % 100) / 100.0 < chance;
   }
@@ -265,7 +256,7 @@ class TripBottomSheetState extends State<TripBottomSheet>
   void cancelSearch() {
     _driverSearchTimer?.cancel();
     setState(() {
-      tripState = TripState.idle;
+      tripState = TripState.idle; // 🔓 unlocks price editor
       _driversFound = 0;
     });
   }
@@ -274,6 +265,7 @@ class TripBottomSheetState extends State<TripBottomSheet>
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final priceEditable = tripState == TripState.idle;
 
     return DraggableScrollableSheet(
       controller: _sheetController,
@@ -293,25 +285,23 @@ class TripBottomSheetState extends State<TripBottomSheet>
             padding: EdgeInsets.zero,
             children: [
               const BuildHandle(),
+
               ModeTabs(
                 modeInfo: modeInfo,
                 selectedMode: selectedMode,
                 onTap: (mode) {
-                  setState(() {
-                    selectedMode = mode;
-                  });
-
-                  if (_hasRoute &&
-                      routeDistanceKm != null &&
-                      routeDurationMin != null) {
+                  setState(() => selectedMode = mode);
+                  if (_hasRoute && routeDistanceKm != null) {
                     updateRouteInfo(
                       distanceKm: routeDistanceKm!,
-                      durationMin: routeDurationMin!,
+                      durationMin: routeDurationMin ?? 0,
                     );
                   }
                 },
               ),
+
               const SizedBox(height: 12),
+
               CustomSearchBar(
                 citySearchController: citySearchController,
                 loadingSearch: loadingSearch,
@@ -320,11 +310,14 @@ class TripBottomSheetState extends State<TripBottomSheet>
                 onChanged: onSearchChanged,
                 onPressed: clearRoute,
               ),
+
+              // ✅ Suggestions with per-item callback
               if (_showSuggestions)
                 Suggestions(
                   suggestions: suggestions,
-                  onTap: selectPlace,
+                  onTap: (place) => selectPlace(place),
                 ),
+
               if (_hasRoute && !_showSuggestions) ...[
                 SlideTransition(
                   position: Tween<Offset>(
@@ -336,16 +329,22 @@ class TripBottomSheetState extends State<TripBottomSheet>
                     child: Column(
                       children: [
                         RouteInfo(
-                            mode: modeInfo[selectedMode]!,
-                            selectedCity: selectedCity,
-                            routeDistanceKm: routeDistanceKm,
-                            routeDurationMin: routeDurationMin),
+                          mode: modeInfo[selectedMode]!,
+                          selectedCity: selectedCity,
+                          routeDistanceKm: routeDistanceKm,
+                          routeDurationMin: routeDurationMin,
+                        ),
+
+                        // ✅ Locked (faded, no arrows) while searchingDriver
                         PriceEditor(
-                            price: price,
-                            basePriceKm: basePriceKm,
-                            onTapPluse: () => adjustPrice(5),
-                            onTapminse: () => adjustPrice(-5),
-                            mode: modeInfo[selectedMode]!),
+                          price: price,
+                          basePriceKm: basePriceKm,
+                          onTapPluse: () => adjustPrice(5),
+                          onTapminse: () => adjustPrice(-5),
+                          mode: modeInfo[selectedMode]!,
+                          enabled: priceEditable,
+                        ),
+
                         StartButton(
                           tripState: tripState,
                           modeInfo: modeInfo,
@@ -370,12 +369,10 @@ class TripBottomSheetState extends State<TripBottomSheet>
     );
   }
 
-  String get hintText {
-    return switch (selectedMode) {
-      TripMode.ride => 'Where to?',
-      TripMode.cityToCity => 'Destination city...',
-      TripMode.delivery => 'Delivery address...',
-      TripMode.takeMeOut => 'Surprise me... or pick a city',
-    };
-  }
+  String get hintText => switch (selectedMode) {
+        TripMode.ride => 'Where to?',
+        TripMode.cityToCity => 'Destination city...',
+        TripMode.delivery => 'Delivery address...',
+        TripMode.takeMeOut => 'Surprise me... or pick a city',
+      };
 }

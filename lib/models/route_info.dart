@@ -8,7 +8,7 @@ class RouteInfo {
   RouteInfo({
     required this.points,
     required this.distanceMeters,
-    required this.durationSeconds,
+    required this.durationSeconds, double? routeDurationMin,
   });
 
   String get distanceText {

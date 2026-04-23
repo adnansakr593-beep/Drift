@@ -5,7 +5,7 @@ class PriceArrowBtn extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
   const PriceArrowBtn({
-    super.key, 
+    super.key,
     required this.icon,
     required this.color,
     required this.onTap,
