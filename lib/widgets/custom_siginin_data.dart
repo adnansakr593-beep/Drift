@@ -85,7 +85,7 @@ class _CustomSigininDataState extends State<CustomSigininData> {
                 fillColor: colors.surface,
               ),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.only(left: 5.0, top: 8),
               child: Text(
@@ -131,7 +131,7 @@ class _CustomSigininDataState extends State<CustomSigininData> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             BlocConsumer<SigninCubit, SigninState>(
               listener: (context, state) {
                 if (state is SigninSucss) {

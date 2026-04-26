@@ -1,26 +1,22 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
-import 'dart:convert';
-import 'package:drift_app/classes/place_suggestion.dart';
 import 'package:drift_app/cubits/theme_cubit/theme_cubit.dart';
 import 'package:drift_app/cubits/theme_cubit/theme_state.dart';
 import 'package:drift_app/services/saved_locations_service_firebase.dart';
 import 'package:drift_app/widgets/custom_drawer.dart';
-import 'package:drift_app/widgets/custom_search_bar.dart';
 import 'package:drift_app/widgets/fab_btn.dart';
 import 'package:drift_app/widgets/loading_pill.dart';
 import 'package:drift_app/widgets/mini_cards.dart';
-import 'package:drift_app/widgets/suggestions.dart';
+import 'package:drift_app/widgets/open_add_sheet.dart';
+import 'package:drift_app/widgets/show_saved_location_options.dart';
 import 'package:drift_app/widgets/trip_bottom_sheet.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/route_info.dart';
 import '../models/saved_location_model.dart';
-import '../pages/add_save_location.dart';
 import '../services/location_service.dart';
 import '../services/routing_service.dart';
 import '../widgets/map_markers.dart';
@@ -51,17 +47,13 @@ class _MapPageState extends State<MapPage> {
 
   // ── Top-bar live search state ────────────────────────────────────────────
   final TextEditingController _searchController = TextEditingController();
-  List<PlaceSuggestion> _searchSuggestions = [];
-  bool _searchLoading = false;
-  bool _showSearchSuggestions = false;
-  String? _searchSelectedCity; // keeps the clear "×" button visible
   Timer? _searchDebounce;
 
   List<Marker> _markers = [];
   String _tileUrl =
       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
 
-  late final SavedLocationService _savedService =
+  late final SavedLocationService savedService =
       SavedLocationService(userId: MapPage.userId);
 
   @override
@@ -102,211 +94,69 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // ══ TOP-BAR SEARCH — same logic as TripBottomSheet ════════════════════════
-
-  /// Called on every keystroke in the top search bar.
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    if (value.trim().length < 2) {
-      setState(() {
-        _searchSuggestions = [];
-        _showSearchSuggestions = false;
-      });
+  // ══ ROUTE CREATION (shared logic) ══════════════════════════════════════════
+  Future<void> _createRouteToDestination(LatLng point, String cityName) async {
+    if (_myLocation == null) {
+      _mapCtrl.move(point, 13);
       return;
     }
-    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
-      _fetchSearchSuggestions(value.trim());
-    });
-  }
 
-  Future<void> _fetchSearchSuggestions(String query) async {
-    setState(() => _searchLoading = true);
+    setState(() {
+      _destination = point;
+      _route = null;
+      _loadingRoute = true;
+    });
+
     try {
-      final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/search'
-        '?q=${Uri.encodeComponent(query)}&format=json&limit=5&addressdetails=1',
+      final route = await RoutingService.getRoute(
+        origin: _myLocation!,
+        destination: point,
       );
-      final res = await http.get(url, headers: {'User-Agent': 'DriftApp/1.0'});
-      final data = jsonDecode(res.body) as List;
       if (!mounted) return;
+
       setState(() {
-        _searchSuggestions = data.map((e) {
-          final addr = e['address'] as Map? ?? {};
-          final shortName = addr['city'] ??
-              addr['town'] ??
-              addr['village'] ??
-              addr['county'] ??
-              (e['display_name'] as String?)?.split(',').first ??
-              '';
-          return PlaceSuggestion(
-            displayName: e['display_name'] ?? '',
-            shortName: shortName,
-            lat: double.parse(e['lat']),
-            lon: double.parse(e['lon']),
-          );
-        }).toList();
-        _showSearchSuggestions = true;
-        _searchLoading = false;
+        _route = route;
+        _loadingRoute = false;
       });
-    } catch (_) {
-      if (mounted) setState(() => _searchLoading = false);
-    }
-  }
 
-  /// User tapped a suggestion in the top-bar dropdown.
-  void _onSearchSuggestionSelected(PlaceSuggestion place) {
-    setState(() {
-      _searchSelectedCity = place.shortName;
-      _searchController.text = place.shortName;
-      _showSearchSuggestions = false;
-      _searchSuggestions = [];
-      _markers = [
-        Marker(
-          point: LatLng(place.lat, place.lon),
-          width: 44,
-          height: 44,
-          child: const DestinationMarker(),
+      _mapCtrl.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints(route.points),
+          padding: const EdgeInsets.all(60),
         ),
-      ];
-    });
-    _mapCtrl.move(LatLng(place.lat, place.lon), 14);
-  }
+      );
 
-  /// Clear button pressed on top-bar search.
-  void _clearSearch() {
-    setState(() {
-      _searchController.clear();
-      _searchSelectedCity = null;
-      _searchSuggestions = [];
-      _showSearchSuggestions = false;
-      _markers = [];
-    });
+      // Update trip bottom sheet with route info
+      _tripSheetKey.currentState?.updateRouteInfo(
+        distanceKm: route.distanceMeters / 1000,
+        durationMin: route.durationSeconds / 60,
+      );
+
+      // Pre-fill the trip sheet search
+      _tripSheetKey.currentState?.prefillSearch(cityName);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingRoute = false);
+      _showError('Failed to create route: ${e.toString()}');
+    }
   }
 
   // ══ MAP TAP → ROUTE ═══════════════════════════════════════════════════════
   Future<void> _onMapTap(TapPosition _, LatLng point) async {
     if (_loadingRoute || _myLocation == null) return;
-    // Hide top-bar suggestions when user taps the map
-    setState(() {
-      _showSearchSuggestions = false;
-    });
-    setState(() {
-      _destination = point;
-      _route = null;
-      _loadingRoute = true;
-    });
-    try {
-      final route = await RoutingService.getRoute(
-        origin: _myLocation!,
-        destination: point,
-      );
-      if (!mounted) return;
-      setState(() {
-        _route = route;
-        _loadingRoute = false;
-      });
-      _mapCtrl.fitCamera(
-        CameraFit.bounds(
-          bounds: LatLngBounds.fromPoints(route.points),
-          padding: const EdgeInsets.all(60),
-        ),
-      );
-      _tripSheetKey.currentState?.updateRouteInfo(
-        distanceKm: route.distanceMeters / 1000,
-        durationMin: route.durationSeconds / 60,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _loadingRoute = false);
-      _showError('فشل في جلب المسار');
-    }
+
+    await _createRouteToDestination(point, 'Selected Location');
   }
 
   // ══ TRIP SHEET: destination selected ═════════════════════════════════════
   Future<void> _onTripDestinationSelected(LatLng point, String cityName) async {
-    if (_myLocation == null) {
-      _mapCtrl.move(point, 13);
-      return;
-    }
-    setState(() {
-      _destination = point;
-      _route = null;
-      _loadingRoute = true;
-      _markers = [];
-    });
-    try {
-      final route = await RoutingService.getRoute(
-        origin: _myLocation!,
-        destination: point,
-      );
-      if (!mounted) return;
-      setState(() {
-        _route = route;
-        _loadingRoute = false;
-      });
-      _mapCtrl.fitCamera(
-        CameraFit.bounds(
-          bounds: LatLngBounds.fromPoints(route.points),
-          padding: const EdgeInsets.all(60),
-        ),
-      );
-      _tripSheetKey.currentState?.updateRouteInfo(
-        distanceKm: route.distanceMeters / 1000,
-        durationMin: route.durationSeconds / 60,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _loadingRoute = false);
-      _showError('فشل في جلب المسار');
-    }
+    await _createRouteToDestination(point, cityName);
   }
 
-  // ══ MINI CARD TAP → ROUTE ═════════════════════════════════════════════════
+  // ══ MINI CARD TAP → ROUTE + update trip sheet ════════════════════════════
   Future<void> _goToSaved(SavedLocation loc) async {
     final point = LatLng(loc.lat, loc.lng);
-    if (_myLocation == null) {
-      _mapCtrl.move(point, 15);
-      return;
-    }
-    setState(() {
-      _destination = point;
-      _route = null;
-      _loadingRoute = true;
-      _markers = [];
-    });
-    try {
-      final route = await RoutingService.getRoute(
-        origin: _myLocation!,
-        destination: point,
-      );
-      if (!mounted) return;
-      setState(() {
-        _route = route;
-        _loadingRoute = false;
-      });
-      _mapCtrl.fitCamera(
-        CameraFit.bounds(
-          bounds: LatLngBounds.fromPoints(route.points),
-          padding: const EdgeInsets.all(60),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _loadingRoute = false);
-      _showError('Route failed: ${e.toString()}');
-    }
-  }
-
-  // ══ ADD LOCATION SHEET ════════════════════════════════════════════════════
-  void _openAddSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => AddLocationSheet(service: _savedService),
-    );
+    await _createRouteToDestination(point, loc.name);
   }
 
   void _clearRoute() {
@@ -412,7 +262,7 @@ class _MapPageState extends State<MapPage> {
                     CircularProgressIndicator(color: colors.primary),
                     const SizedBox(height: 14),
                     Text(
-                      'جاري تحديد موقعك...',
+                      'Getting your location...',
                       style: TextStyle(fontSize: 15, color: colors.onSurface),
                     ),
                   ],
@@ -432,26 +282,47 @@ class _MapPageState extends State<MapPage> {
                 Row(
                   children: [
                     Expanded(
-                      // ✅ Same CustomSearchBar widget used in TripBottomSheet
-                      child: CustomSearchBar(
-                        citySearchController: _searchController,
-                        loadingSearch: _searchLoading,
-                        hintText: 'Search city or place...',
-                        selectedCity: _searchSelectedCity,
-                        onChanged: _onSearchChanged,
-                        onPressed: _clearSearch,
+                      child: StreamBuilder<List<SavedLocation>>(
+                        stream: savedService.stream(),
+                        builder: (context, snapshot) {
+                          final locations = snapshot.data ?? [];
+                          if (locations.isEmpty) return const SizedBox.shrink();
+                          return SizedBox(
+                            height: 65,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: locations.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (_, i) => MiniCard(
+                                label: locations[i].name,
+                                onTap: () => _goToSaved(locations[i]),
+                                onLongPress: () => showSavedLocationOptions(
+                                    context,
+                                    locations[i],
+                                    savedService,
+                                    mounted,
+                                    colors),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                              color: colors.background.withOpacity(0.5),
+                              blurStyle: BlurStyle.inner),
+                        ],
+                        borderRadius: BorderRadius.circular(19),
+                        //shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.05),
                         border: Border.all(
-                          color: colors.onSurface.withOpacity(0.6),
-                          width: 2,
-                        ),
-                        shape: BoxShape.circle,
-                        color: colors.background,
+                            color: colors.onSurface.withOpacity(0.4), width: 1),
                       ),
                       child: IconButton(
                         onPressed: () =>
@@ -461,38 +332,6 @@ class _MapPageState extends State<MapPage> {
                     ),
                   ],
                 ),
-
-                // ── Live suggestions dropdown ──────────────────────────────
-                // ✅ Same Suggestions widget used in TripBottomSheet
-                if (_showSearchSuggestions && _searchSuggestions.isNotEmpty)
-                  Suggestions(
-                    suggestions: _searchSuggestions,
-                    onTap: _onSearchSuggestionSelected,
-                  ),
-
-                // ── Mini Cards ─────────────────────────────────────────────
-                if (!_showSearchSuggestions) ...[
-                  const SizedBox(height: 10),
-                  StreamBuilder<List<SavedLocation>>(
-                    stream: _savedService.stream(),
-                    builder: (context, snapshot) {
-                      final locations = snapshot.data ?? [];
-                      if (locations.isEmpty) return const SizedBox.shrink();
-                      return SizedBox(
-                        height: 50,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: locations.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (_, i) => MiniCard(
-                            label: locations[i].name,
-                            onTap: () => _goToSaved(locations[i]),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
               ],
             ),
           ),
@@ -528,7 +367,9 @@ class _MapPageState extends State<MapPage> {
                 FabBtn(
                   icon: Icons.add_location_alt_rounded,
                   color: colors.onSurface,
-                  onTap: _openAddSheet,
+                  onTap: () {
+                    openAddSheet(context, savedService);
+                  },
                 ),
                 if (_destination != null) ...[
                   const SizedBox(height: 8),

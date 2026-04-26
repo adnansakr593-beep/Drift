@@ -39,11 +39,14 @@ class _SignupPageState extends State<SignupPage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  const SizedBox(
+                    height: 5,
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 25),
                     child: Container(
-                      height: 195,
-                      width: 320,
+                      height: 125,
+                      width: 280,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(25),
                         image: const DecorationImage(
@@ -53,28 +56,31 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 5),
                   Text(
                     'Join Drift',
                     style: TextStyle(
-                      fontSize: 36,
+                      fontSize: 33,
                       fontFamily: fontFamily,
                       color: colors.onBackground,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
+                      letterSpacing: 1,
                     ),
                   ),
                   const SizedBox(height: 2),
-                  SizedBox(
-                    width: 338,
-                    child: Text(
-                      'Join for a premium ride experience',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontFamily: fontFamily,
-                        color: colors.onSurface,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: SizedBox(
+                      width: 335,
+                      child: Text(
+                        'Join for a premium ride experience',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontFamily: fontFamily,
+                          color: colors.onSurface,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),
@@ -83,7 +89,6 @@ class _SignupPageState extends State<SignupPage> {
                 ],
               ),
             ),
-            //const SizedBox(height: 25),
           ),
         ),
       ],

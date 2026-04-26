@@ -50,7 +50,7 @@ class _BuildProfilePicState extends State<BuildProfilePic> {
                             child: CircularProgressIndicator(
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
+                                      loadingProgress.expectedTotalBytes!
                                   : null,
                               strokeWidth: 2,
                             ),
@@ -72,11 +72,11 @@ class _BuildProfilePicState extends State<BuildProfilePic> {
                 child: Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colors.onSurface,
+                    color: colors.surface,
                   ),
                   child: Center(
                     child: CircularProgressIndicator(
-                      color: colors.onSurface,
+                      color: colors.onBackground,
                       strokeWidth: 3,
                     ),
                   ),
@@ -95,9 +95,11 @@ class _BuildProfilePicState extends State<BuildProfilePic> {
                     borderRadius: BorderRadius.circular(20),
                     onTap: isUpdating
                         ? null
-                        : () => context
-                              .read<UserProfileCubit>()
-                              .updateProfilePicture(),
+                        : () {
+                            context
+                                .read<UserProfileCubit>()
+                                .updateProfilePicture();
+                          },
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(

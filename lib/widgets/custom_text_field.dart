@@ -14,6 +14,7 @@ class CustomTextField extends StatefulWidget {
   final Widget? suffixIcon;
   final void Function(String)? onSubmitted;
   final double? hintSize;
+  final bool? filled;
 
   const CustomTextField({
     super.key,
@@ -28,6 +29,7 @@ class CustomTextField extends StatefulWidget {
     this.suffixIcon,
     this.onSubmitted,
     this.hintSize,
+    this.filled,
   });
 
   @override
@@ -55,16 +57,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
         style: TextStyle(
           color: colors.onSurface,
           fontFamily: fontFamily,
-          fontSize: 20,
+          fontSize: 15,
           fontWeight: FontWeight.bold,
         ),
-
         obscureText: _obscureText,
         cursorColor: colors.onBackground,
         onSubmitted: widget.onSubmitted,
-
         decoration: InputDecoration(
-          filled: true,
+          filled: widget.filled ?? true,
           fillColor: widget.fillColor ?? colors.background,
           hintText: widget.hintText,
           suffixIconColor: colors.primary,
@@ -76,7 +76,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
           ),
           prefixIcon: widget.prefixIcon,
           prefixIconColor: colors.onSurface,
-
           suffixIcon: widget.isPassword
               ? IconButton(
                   icon: Icon(
@@ -90,16 +89,13 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   },
                 )
               : widget.suffixIcon,
-
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(
               color: colors.onSurface.withOpacity(0.5),
               width: 2,
             ),
-
             borderRadius: BorderRadius.circular(28),
           ),
-
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(color: colors.primary, width: 2),
             borderRadius: BorderRadius.circular(28),

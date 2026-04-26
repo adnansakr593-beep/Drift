@@ -125,19 +125,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 width: double.infinity,
                 child: GlassCont(
                   height: 490,
-                  top: BorderSide(
-                    color: colors.onBackground.withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                  bottom: BorderSide(
-                    color: colors.onBackground.withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                  right: BorderSide(
-                    color: colors.onBackground.withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                  left: BorderSide(
+                  border: Border.all(
                     color: colors.onBackground.withOpacity(0.4),
                     width: 1.5,
                   ),
@@ -171,7 +159,7 @@ class _HistoryPageState extends State<HistoryPage> {
               style: TextStyle(
                 color: colors.onSurface,
                 fontFamily: fontFamily,
-                fontSize: 30,
+                fontSize: 25,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -184,7 +172,7 @@ class _HistoryPageState extends State<HistoryPage> {
               child: CustomButtom(
                 onTap: () => Navigator.pushNamed(context, MapPage.id),
                 backgroundColor: colors.surface,
-                text: 'Make one Now',
+                text: 'Get Started',
                 icon: IconButton(
                   onPressed: () => Navigator.pushNamed(context, MapPage.id),
                   icon: Icon(

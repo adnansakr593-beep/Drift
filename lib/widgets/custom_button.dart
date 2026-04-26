@@ -34,8 +34,8 @@ class _CustomButtomState extends State<CustomButtom> {
 
     return GestureDetector(
       onTap: widget.onTap,
-
       child: Container(
+        
         height: 55,
         width: double.infinity,
         decoration: BoxDecoration(
@@ -46,7 +46,6 @@ class _CustomButtomState extends State<CustomButtom> {
             width: 2.0,
           ),
         ),
-
         child: Row(
           mainAxisAlignment:
               widget.mainAxisAlignment ?? MainAxisAlignment.center,
@@ -61,7 +60,6 @@ class _CustomButtomState extends State<CustomButtom> {
                 fontFamily: fontFamily,
               ),
             ),
-
             if (widget.icon != null) ...[
               const SizedBox(width: 15),
               widget.icon!,

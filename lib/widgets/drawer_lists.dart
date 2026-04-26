@@ -7,31 +7,51 @@ class DrawerLists extends StatelessWidget {
   final String title;
   final VoidCallback? onTap;
   final Widget? child;
+  final void Function()? onLongPress;
+  final EdgeInsetsGeometry? margin;
+  final double? width;
+  final double? sizedBoxWidth;
+  final MainAxisAlignment? mainAxisAlignment;
+  final EdgeInsetsGeometry? padding;
+  final double? height;
+  final EdgeInsetsGeometry? paddingSecondCont;
+  final Decoration? decoration;
 
-  const DrawerLists({
-    super.key,
-    this.icon,
-    required this.title,
-    this.onTap,
-    this.child,
-  });
+  const DrawerLists(
+      {super.key,
+      this.icon,
+      required this.title,
+      this.onTap,
+      this.child,
+      this.onLongPress,
+      this.margin,
+      this.width,
+      this.sizedBoxWidth,
+      this.mainAxisAlignment,
+      this.padding,
+      this.height,
+      this.paddingSecondCont,
+      this.decoration});
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return GestureDetector(
+      onLongPress: onLongPress,
       onTap: onTap,
       child: Container(
-        height: 75,
-        width: 220,
-        margin: const EdgeInsets.only(bottom: 15, left: 25),
-        decoration: BoxDecoration(
-          color: colors.onSurface.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(15),
-        ),
+        height: height ?? 75,
+        width: width,
+        padding: padding,
+        margin: margin ?? const EdgeInsets.only(bottom: 5, left: 25),
+        decoration: decoration ??
+            BoxDecoration(
+              color: colors.onSurface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(15),
+            ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: mainAxisAlignment ?? MainAxisAlignment.spaceEvenly,
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 10.0),
@@ -45,12 +65,10 @@ class DrawerLists extends StatelessWidget {
                 ),
               ),
             ),
-
-            const SizedBox(width: 15),
-
+            SizedBox(width: sizedBoxWidth ?? 15),
             if (icon != null) ...[
               Container(
-                padding: const EdgeInsets.all(15),
+                padding: paddingSecondCont ?? const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: colors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -58,7 +76,6 @@ class DrawerLists extends StatelessWidget {
                 child: icon!,
               ),
             ],
-
             if (child != null) ...[child!],
           ],
         ),

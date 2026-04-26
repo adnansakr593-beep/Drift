@@ -30,9 +30,16 @@ class PriceEditor extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: colors.surfaceVariant.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: colors.onSurface.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(
+                color: colors.background.withOpacity(0.5),
+                blurStyle: BlurStyle.inner),
+          ],
+          borderRadius: BorderRadius.circular(19),
+          //shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.05),
+          border:
+              Border.all(color: colors.onSurface.withOpacity(0.4), width: 1),
         ),
         child: Row(
           children: [

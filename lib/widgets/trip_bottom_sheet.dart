@@ -187,7 +187,8 @@ class TripBottomSheetState extends State<TripBottomSheet>
   }
 
   // ══ ROUTE & PRICE ════════════════════════════════════════════════════════
-  void updateRouteInfo({required double distanceKm, required double durationMin}) {
+  void updateRouteInfo(
+      {required double distanceKm, required double durationMin}) {
     final base = _basePriceForMode(selectedMode);
     setState(() {
       routeDistanceKm = distanceKm;
@@ -237,7 +238,10 @@ class TripBottomSheetState extends State<TripBottomSheet>
     int elapsed = 0;
     _driverSearchTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       elapsed += 2;
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       if (elapsed >= 4 && (elapsed >= 14 || _randomBool(elapsed))) {
         t.cancel();
         setState(() {
@@ -289,6 +293,7 @@ class TripBottomSheetState extends State<TripBottomSheet>
               ModeTabs(
                 modeInfo: modeInfo,
                 selectedMode: selectedMode,
+                enabled: priceEditable,
                 onTap: (mode) {
                   setState(() => selectedMode = mode);
                   if (_hasRoute && routeDistanceKm != null) {
@@ -367,6 +372,15 @@ class TripBottomSheetState extends State<TripBottomSheet>
         );
       },
     );
+  }
+
+  void prefillSearch(String cityName) {
+    setState(() {
+      selectedCity = cityName;
+      citySearchController.text = cityName;
+      _showSuggestions = false;
+      suggestions = [];
+    });
   }
 
   String get hintText => switch (selectedMode) {

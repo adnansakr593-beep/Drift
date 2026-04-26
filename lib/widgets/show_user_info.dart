@@ -19,10 +19,9 @@ class _ShowUserInfoState extends State<ShowUserInfo> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 20),
 
         BuildProfilePic(user: user!),
-        const SizedBox(height: 20),
+        const SizedBox(height: 5),
         BuildNameSection(user: user),
         const SizedBox(height: 5),
 
@@ -41,8 +40,7 @@ class _ShowUserInfoState extends State<ShowUserInfo> {
           ),
         ),
 
-        const SizedBox(height: 10),
-        //buildSettingsList(colors),
+        const SizedBox(height: 5),
       ],
     );
   }

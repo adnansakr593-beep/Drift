@@ -21,17 +21,20 @@ class TabBtn extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? colors.onSurface : colors.background,
+          color:
+              selected ? colors.onSurface : colors.background.withOpacity(0.8),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? colors.primary : colors.outline),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? colors.onPrimary : colors.onSurface,
-            fontFamily: fontFamily,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? colors.onPrimary : colors.onSurface,
+              fontFamily: fontFamily,
+            ),
           ),
         ),
       ),

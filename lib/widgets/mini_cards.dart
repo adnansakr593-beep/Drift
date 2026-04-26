@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:ui';
 
+import 'package:drift_app/widgets/drawer_lists.dart';
 import 'package:flutter/material.dart';
 
 class MiniCard extends StatelessWidget {
@@ -7,12 +9,12 @@ class MiniCard extends StatelessWidget {
     super.key,
     required this.label,
     this.onTap,
-    this.icon,
+    this.onLongPress,
   });
 
   final String label;
   final VoidCallback? onTap;
-  final IconData? icon;
+  final VoidCallback? onLongPress;
 
   /// Auto-pick icon based on common Arabic / English keywords
   static IconData iconForLabel(String name) {
@@ -48,48 +50,37 @@ class MiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final resolvedIcon = icon ?? iconForLabel(label);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: colors.background,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: colors.primary.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(2, 3),
+    return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: DrawerLists(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                    color: colors.background.withOpacity(0.5),
+                    blurStyle: BlurStyle.inner),
+              ],
+              borderRadius: BorderRadius.circular(19),
+              color: Colors.white.withOpacity(0.05),
+              border: Border.all(
+                  color: colors.onSurface.withOpacity(0.4), width: 1),
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Icon bubble ────────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: colors.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(resolvedIcon, color: colors.primary, size: 18),
+            sizedBoxWidth: 10,
+            height: 40,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            margin: const EdgeInsets.only(left: 5),
+            onTap: onTap,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            onLongPress: onLongPress,
+            title: label,
+            paddingSecondCont: const EdgeInsets.all(12),
+            icon: Icon(
+              iconForLabel(label),
+              color: colors.onSurface,
+              size: 20,
             ),
-            const SizedBox(width: 8),
-            // ── Label ──────────────────────────────────────────────────────────
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 }

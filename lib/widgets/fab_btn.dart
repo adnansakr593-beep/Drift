@@ -7,7 +7,8 @@ class FabBtn extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const FabBtn({super.key, 
+  const FabBtn({
+    super.key,
     required this.icon,
     required this.onTap,
     this.color = const Color(0xFF4285F4),
@@ -22,19 +23,19 @@ class FabBtn extends StatelessWidget {
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-          color: colors.background,
-          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
+                color: colors.background.withOpacity(0.5),
+                blurStyle: BlurStyle.inner),
           ],
+          borderRadius: BorderRadius.circular(19),
+          //shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.05),
+          border:
+              Border.all(color: colors.onSurface.withOpacity(0.4), width: 1),
         ),
         child: Icon(icon, color: color, size: 22),
       ),
     );
   }
 }
-

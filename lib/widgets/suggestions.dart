@@ -15,16 +15,15 @@ class Suggestions extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.onSurface.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
+              color: colors.background.withOpacity(0.5),
+              blurStyle: BlurStyle.inner),
         ],
+        borderRadius: BorderRadius.circular(19),
+        //shape: BoxShape.circle,
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: colors.onSurface.withOpacity(0.4), width: 1),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -58,7 +57,7 @@ class Suggestions extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.place_rounded,
-                        color: colors.primary,
+                        color: colors.onSurface,
                         size: 15,
                       ),
                     ),

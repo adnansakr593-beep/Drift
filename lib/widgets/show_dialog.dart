@@ -50,15 +50,3 @@ void customDialog(BuildContext context, ColorScheme colors) {
     ),
   );
 }
-
-
-// AlertDialog(
-//         title: const 
-//         content: 
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.pop(context),
-//             child: const Text('Close'),
-//           ),
-//         ],
-//       ),

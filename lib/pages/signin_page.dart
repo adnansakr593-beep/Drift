@@ -61,7 +61,7 @@ class _SigninPageState extends State<SigninPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 5),
                   Text(
                     'Welcom Back',
                     style: TextStyle(
@@ -83,7 +83,7 @@ class _SigninPageState extends State<SigninPage> {
                       letterSpacing: 1,
                     ),
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 10),
                   const CustomSigininData(),
                   const SizedBox(height: 10),
                   Row(
@@ -161,7 +161,7 @@ class _SigninPageState extends State<SigninPage> {
                       );
                     },
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

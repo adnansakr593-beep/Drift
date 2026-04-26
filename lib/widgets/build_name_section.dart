@@ -71,8 +71,8 @@ class _BuildNameSectionState extends State<BuildNameSection> {
           _showSnackBar('Name updated successfully!');
           if (state.updatedUser != null) {
             context.read<GoogleSigninCubit>().updateUserState(
-              state.updatedUser,
-            );
+                  state.updatedUser,
+                );
           }
           // context.read<UserProfileCubit>().resetState();
         }

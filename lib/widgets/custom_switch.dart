@@ -20,7 +20,7 @@ class CustomSwitch extends StatelessWidget {
     return Container(
       height: 75,
       width: 220,
-      margin: const EdgeInsets.only(bottom: 15, left: 25),
+      margin: const EdgeInsets.only(bottom: 5, left: 25),
       decoration: BoxDecoration(
         color: colors.onSurface.withOpacity(0.3),
         borderRadius: BorderRadius.circular(15),

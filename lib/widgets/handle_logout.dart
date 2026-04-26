@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift_app/cubits/google_signin/google_signin_cubit.dart';
 import 'package:drift_app/helper/const.dart';
 import 'package:drift_app/pages/signin_page.dart';
+import 'package:drift_app/widgets/glass_cont.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -33,25 +34,48 @@ Future<void> handleLogout(BuildContext context, ColorScheme colors) async {
 
   // Loading Dialog
   showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => PopScope(
-      canPop: false,
-      child: AlertDialog(
-        backgroundColor: colors.surface,
-        title: Text(
-          'Logging out...',
-          style: TextStyle(color: colors.onSurface),
-        ),
-        content: SizedBox(
-          height: 65,
-          child: Center(
-            child: CircularProgressIndicator(color: colors.primary),
-          ),
-        ),
-      ),
-    ),
-  );
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+            canPop: false,
+            child: GlassCont(
+              border: Border.all(
+                  color: colors.onSurface.withOpacity(0.3), width: 1),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 45, vertical: 280),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Logging out...',
+                            style: TextStyle(
+                                color: colors.onSurface,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                fontFamily: fontFamily),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 65,
+                    child: Center(
+                      child:
+                          CircularProgressIndicator(color: colors.onSurface),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ));
 
   try {
     await context.read<GoogleSigninCubit>().signOut();

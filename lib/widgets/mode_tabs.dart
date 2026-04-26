@@ -6,11 +6,13 @@ class ModeTabs extends StatefulWidget {
   final Map<TripMode, ModeInfo> modeInfo;
   final TripMode selectedMode;
   final void Function(TripMode mode)? onTap;
+  final bool enabled;
   const ModeTabs(
       {super.key,
       required this.modeInfo,
       required this.selectedMode,
-      this.onTap});
+      this.onTap,
+      required this.enabled});
 
   @override
   State<ModeTabs> createState() => _ModeTabsState();
@@ -31,19 +33,26 @@ class _ModeTabsState extends State<ModeTabs> {
           return Expanded(
             child: GestureDetector(
               onTap: () {
-                widget.onTap?.call(mode);
+                widget.enabled ? widget.onTap?.call(mode) : null;
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                        color: colors.background.withOpacity(0.5),
+                        blurStyle: BlurStyle.inner),
+                  ],
                   color: selected
                       ? info.color.withOpacity(0.15)
-                      : colors.surfaceVariant.withOpacity(0.4),
+                      : Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: selected ? info.color : Colors.transparent,
+                    color: selected
+                        ? info.color
+                        : colors.onSurface.withOpacity(0.4),
                     width: 1.5,
                   ),
                 ),

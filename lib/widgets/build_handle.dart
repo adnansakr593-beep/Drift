@@ -8,7 +8,7 @@ class BuildHandle extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10),
+        margin: const EdgeInsets.only(bottom: 15),
         width: 40,
         height: 4,
         decoration: BoxDecoration(

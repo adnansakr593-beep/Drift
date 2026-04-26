@@ -1,3 +1,4 @@
+import 'package:drift_app/helper/const.dart';
 import 'package:flutter/material.dart';
 
 class CustomSearchBar extends StatelessWidget {
@@ -7,6 +8,11 @@ class CustomSearchBar extends StatelessWidget {
   final bool loadingSearch;
   final void Function()? onPressed;
   final String? selectedCity;
+  final EdgeInsetsGeometry? padding;
+  final Color? hintColor;
+  final Color? borderColor;
+  final Color? iconColor;
+  final double? borderWidth;
 
   const CustomSearchBar(
       {super.key,
@@ -15,25 +21,39 @@ class CustomSearchBar extends StatelessWidget {
       this.hintText,
       required this.loadingSearch,
       this.onPressed,
-      this.selectedCity});
+      this.selectedCity,
+      this.padding,
+      this.hintColor,
+      this.borderColor,
+      this.iconColor,
+      this.borderWidth});
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: colors.surfaceVariant.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.onSurface.withOpacity(0.12)),
+          boxShadow: [
+            BoxShadow(
+                color: colors.background.withOpacity(0.5),
+                blurStyle: BlurStyle.inner),
+          ],
+          borderRadius: BorderRadius.circular(26),
+          //shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.05),
+
+          border: Border.all(
+              color: borderColor ?? colors.onSurface.withOpacity(0.4),
+              width: borderWidth ?? 1),
         ),
         child: Row(
           children: [
             const SizedBox(width: 14),
             Icon(
               Icons.search_rounded,
-              color: colors.onSurface.withOpacity(0.4),
+              color: iconColor ?? colors.onSurface.withOpacity(0.4),
               size: 20,
             ),
             const SizedBox(width: 8),
@@ -45,9 +65,9 @@ class CustomSearchBar extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: hintText,
                   hintStyle: TextStyle(
-                    color: colors.onSurface.withOpacity(0.35),
-                    fontSize: 15,
-                  ),
+                      color: hintColor ?? colors.onSurface.withOpacity(0.35),
+                      fontSize: 15,
+                      fontFamily: fontFamily),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -69,7 +89,7 @@ class CustomSearchBar extends StatelessWidget {
               IconButton(
                 icon: Icon(
                   Icons.close_rounded,
-                  color: colors.onSurface.withOpacity(0.4),
+                  color: iconColor ?? colors.onSurface.withOpacity(0.4),
                   size: 18,
                 ),
                 onPressed: onPressed,
